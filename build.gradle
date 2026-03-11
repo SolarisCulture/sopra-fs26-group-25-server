@@ -54,12 +54,16 @@ bootJar {
     archiveFileName = "${archiveBaseName.get()}.${archiveExtension.get()}"
 }
 
+plugins {
+  id "org.sonarqube" version "7.2.3.7755"
+}
+
 sonar {
-    properties {
-        property "sonar.projectKey", "TODO"
-        property "sonar.organization", "TODO"
-        property "sonar.host.url", "https://sonarcloud.io"
-    }
+  properties {
+    property "sonar.projectKey", "SolarisCulture_sopra-fs26-group-25-server"
+    property "sonar.organization", "solarisculture"
+    property "sonar.host.url", "https://sonarcloud.io"
+  }
 }
 
 jacocoTestReport {
