@@ -5,6 +5,7 @@ plugins {
     id 'idea'
     id 'jacoco'
     id "org.sonarqube" version "7.2.1.6560"
+    id "org.sonarqube" version "7.2.3.7755"
 }
 
 group = 'ch.uzh.ifi.hasel'
@@ -52,10 +53,6 @@ dependencies {
 
 bootJar {
     archiveFileName = "${archiveBaseName.get()}.${archiveExtension.get()}"
-}
-
-plugins {
-  id "org.sonarqube" version "7.2.3.7755"
 }
 
 sonar {
