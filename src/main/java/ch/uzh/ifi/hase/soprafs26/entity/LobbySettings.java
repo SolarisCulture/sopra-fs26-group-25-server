@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.entity;
 
+import ch.uzh.ifi.hase.soprafs26.constant.*;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;

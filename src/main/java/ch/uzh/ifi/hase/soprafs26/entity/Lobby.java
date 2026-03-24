@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.entity;
 
+import ch.uzh.ifi.hase.soprafs26.constant.*;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ public class Lobby {
     @Column(nullable = false, unique = true, length = 6)
     private String lobbyCode; 
 
-    @Colum(nullable = false)
+    @Column(nullable = false)
     private Long hostId;
 
     /* 
