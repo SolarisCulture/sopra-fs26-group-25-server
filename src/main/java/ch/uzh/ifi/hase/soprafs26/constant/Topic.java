@@ -5,5 +5,5 @@ public enum Topic {
     SPORTS,
     GAMES,
     BOOKS,
-    DEFAULT
+    DEFAULT;
 }
