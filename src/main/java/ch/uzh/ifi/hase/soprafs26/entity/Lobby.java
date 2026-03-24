@@ -84,7 +84,7 @@ public class Lobby {
         return PlayerList.stream()
             .filter(player -> player.getId().equals(playerId))
             .findFirst() // Wrapper to create <Optional> object
-            .orElse(null) // HAS to unwrap <Optional> to work
+            .orElse(null); // HAS to unwrap <Optional> to work
     }
 
     public boolean isUsernameTaken(String username){

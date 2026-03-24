@@ -31,7 +31,7 @@ public class Player {
 
     // Constructors
     public Player() { // Required by JPA
-        this.joinedAt = LocalDateTime.now()
+        this.joinedAt = LocalDateTime.now();
         this.team = TeamColor.UNASSIGNED;
         this.role = Role.NONE;
         this.isHost = false;
@@ -56,7 +56,7 @@ public class Player {
     public void setRole(Role role) { this.role = role; }
 
     public boolean isHost() { return isHost; }
-    public void setHost(boolean host) { isHost = host; }
+    public void setHost(boolean host) { this.isHost = host; }
 
     public LocalDateTime getJoinedAt() { return joinedAt; }
     public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; } // Needed here since players could possibly "rejoin"
