@@ -82,14 +82,14 @@ public class Lobby {
     }
 
     public Player getPlayerById(Long playerId){
-        return PlayerList.stream()
+        return playerList.stream()
             .filter(player -> player.getId().equals(playerId))
             .findFirst() // Wrapper to create <Optional> object
             .orElse(null); // HAS to unwrap <Optional> to work
     }
 
     public boolean isUsernameTaken(String username){
-        return playerList.stream().anyMatch(player -> player.getUsername().equalsIgnorecase(username));
+        return playerList.stream().anyMatch(player -> player.getUsername().equalsIgnoreCase(username));
     }
     
 }
