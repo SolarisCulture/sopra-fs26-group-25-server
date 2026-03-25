@@ -29,7 +29,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws") // Defines URL path for WebSocket connections
                 .setAllowedOrigins( // For CORS (Cross-Origin Resource Sharing)
                     "http://localhost:3000",
-                    "https://*.vercel.app"
+                    "https://sopra-fs26-group-25-client.vercel.app/"
                 )
                 .withSockJS(); // Reason for SockJS: fallback support, since not all browsers use WebSocket => Client MUST use SockJS library to connect
     }

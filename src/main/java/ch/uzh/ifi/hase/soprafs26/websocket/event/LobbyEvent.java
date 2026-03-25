@@ -37,7 +37,7 @@ public class LobbyEvent {
     // Setters
     public void setType(String type) { this.type = type; }
     public void setLobbyCode(String lobbyCode) { this.lobbyCode = lobbyCode; }
-    public void setData(String data) { this.data = data; }
+    public void setData(Object data) { this.data = data; } 
     public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }
 
 
