@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "lobbies")
@@ -41,9 +42,20 @@ public class Lobby {
 
 
     public Lobby() { // Constructor
+        this.settings = new LobbySettings();
+    }
+
+    @PrePersist
+    protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.lobbyStatus = LobbyStatus.WAITING;
-        this.settings = new LobbySettings();
+        if(this.lobbyCode == null){
+            this.lobbyCode = generateRandomCode(); // If not set already
+        }
+    }
+
+    private String generateRandomCode() {
+        return UUID.randomUUID().toString().substring(0, 6).toUpperCase();
     }
 
     // Getters, Setters

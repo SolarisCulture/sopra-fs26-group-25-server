@@ -31,7 +31,6 @@ public class Player {
 
     // Constructors
     public Player() { // Required by JPA
-        this.joinedAt = LocalDateTime.now();
         this.team = TeamColor.UNASSIGNED;
         this.role = Role.NONE;
         this.isHost = false;
@@ -40,6 +39,11 @@ public class Player {
     public Player(String username){ 
         this();
         this.username = username;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        this.joinedAt = LocalDateTime.now();
     }
 
     // Getters, Setters

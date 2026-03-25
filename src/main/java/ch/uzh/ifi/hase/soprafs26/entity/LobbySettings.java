@@ -36,7 +36,7 @@ public class LobbySettings {
     public void setTimeLimit(Integer timeLimit) { this.timeLimit = timeLimit; }
 
     public Integer getRounds() { return rounds; }
-    public void setRound(Integer rounds) { this.rounds = rounds; }
+    public void setRounds(Integer rounds) { this.rounds = rounds; }
 
     public List<Topic> getTopics() { return topics; }
     public void setTopics(List<Topic> topics) { this.topics = topics; }
