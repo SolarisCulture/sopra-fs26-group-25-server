@@ -29,7 +29,7 @@ class LobbyWebSocketHandlerTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this); // Initializes 
+        MockitoAnnotations.openMocks(this); // Initializes Mocks
     }
 
     // Lobby Created
