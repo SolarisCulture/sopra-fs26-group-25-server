@@ -2,7 +2,6 @@ package ch.uzh.ifi.hase.soprafs26.entity;
 
 import ch.uzh.ifi.hase.soprafs26.constant.*;
 import org.junit.jupiter.api.Test;
-import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
