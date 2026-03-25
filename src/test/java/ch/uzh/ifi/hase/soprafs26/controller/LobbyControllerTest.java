@@ -14,6 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.RoleUpdateDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.TeamUpdateDTO;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -38,11 +40,14 @@ public class LobbyControllerTest {
 		PlayerDTO player = new PlayerDTO();
         player.setTeamColor(TeamColor.BLUE);
 
+        TeamUpdateDTO teamDTO = new TeamUpdateDTO();
+        teamDTO.setTeamColor(TeamColor.BLUE);
+
 		given(lobbyService.assignTeam(Mockito.any(),Mockito.any(),Mockito.any())).willReturn(player);
 
 		MockHttpServletRequestBuilder putRequest = put("/api/lobbies/1/player/1/team")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString("BLUE"));
+                .content(asJsonString(teamDTO));
 
 		mockMvc.perform(putRequest).andExpect(status().isOk())
 				.andExpect(jsonPath("$.teamColor", is(player.getTeamColor().name())));
@@ -53,11 +58,14 @@ public class LobbyControllerTest {
 		PlayerDTO player = new PlayerDTO();
         player.setRole(Role.SPY);
 
+        RoleUpdateDTO roleDTO = new RoleUpdateDTO();
+        roleDTO.setRole(Role.SPY);
+
 		given(lobbyService.assignRole(Mockito.any(),Mockito.any(),Mockito.any())).willReturn(player);
 
 		MockHttpServletRequestBuilder putRequest = put("/api/lobbies/1/player/1/role")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString("SPY"));
+                .content(asJsonString(roleDTO));
 
 		mockMvc.perform(putRequest).andExpect(status().isOk())
 				.andExpect(jsonPath("$.role", is(player.getRole().name())));

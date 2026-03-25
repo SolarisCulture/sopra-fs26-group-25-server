@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import ch.uzh.ifi.hase.soprafs26.constant.Role;
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.RoleUpdateDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.TeamUpdateDTO;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 
 @RestController
@@ -25,16 +25,14 @@ public class LobbyController {
 	@PutMapping("/api/lobbies/{lobbyCode}/player/{playerId}/team") 
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
-	public PlayerDTO assignPlayerToTeam(@PathVariable String lobbyCode, @PathVariable Long playerId, @RequestBody String teamColorString) {    //TeamColor as String (+ convert it) or TeamColor object? 
-        TeamColor teamColor = TeamColor.valueOf(teamColorString);   
-		return lobbyService.assignTeam(lobbyCode, playerId, teamColor);
+	public PlayerDTO assignPlayerToTeam(@PathVariable String lobbyCode, @PathVariable Long playerId, @RequestBody TeamUpdateDTO teamColorDTO) {    //TeamColor as String (+ convert it) or TeamColor object? 
+		return lobbyService.assignTeam(lobbyCode, playerId, teamColorDTO.getTeamColor());
 	}
 
     @PutMapping("/api/lobbies/{lobbyCode}/player/{playerId}/role")  
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
-	public PlayerDTO assignPlayerToRole(@PathVariable String lobbyCode, @PathVariable Long playerId, @RequestBody String roleString) {  
-        Role role = Role.valueOf(roleString);
-		return lobbyService.assignRole(lobbyCode, playerId, role);
+	public PlayerDTO assignPlayerToRole(@PathVariable String lobbyCode, @PathVariable Long playerId, @RequestBody RoleUpdateDTO roleDTO) {  
+		return lobbyService.assignRole(lobbyCode, playerId, roleDTO.getRole());
 	}
 }
