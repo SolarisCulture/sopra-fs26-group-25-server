@@ -33,7 +33,7 @@ public class GameWebSocketHandler {
         );
 
         messagingTemplate.convertAndSend(
-                "/topic/game/" + lobbyCode + "/operative",
+                "/topic/game/" + lobbyCode + "/spy",
                 new GameEvent("GAME_STARTED", lobbyCode, operativeBoard)
         );
     }

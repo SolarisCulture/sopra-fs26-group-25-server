@@ -78,8 +78,8 @@ public class GameService {
         lobbyRepository.save(lobby);
 
         // 7. Build both views and pass them to the handler
-        GameBoardDTO spymasterBoard = buildBoardDTO(game, Role.SPY);
-        GameBoardDTO operativeBoard = buildBoardDTO(game, Role.OPERATIVE);
+        GameBoardDTO spymasterBoard = buildBoardDTO(game, Role.SPYMASTER);
+        GameBoardDTO operativeBoard = buildBoardDTO(game, Role.SPY);
         gameWebSocketHandler.broadcastGameStarted(lobbyCode, spymasterBoard, operativeBoard);
 
         return game;
@@ -110,7 +110,7 @@ public class GameService {
             dto.setWord(card.getWord());
             dto.setRevealed(card.isRevealed());
 
-            if (role == Role.SPY || card.isRevealed()) {
+            if (role == Role.SPYMASTER || card.isRevealed()) {
                 dto.setCardType(card.getCardType());
             }
 
@@ -128,7 +128,7 @@ public class GameService {
         boardDTO.setCards(cardDTOs);
 
         // 4. Only spymaster gets the key card
-        if (role == Role.SPY) {
+        if (role == Role.SPYMASTER) {
             boardDTO.setKeyCard(keyCard);
         }
 
