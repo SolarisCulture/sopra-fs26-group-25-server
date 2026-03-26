@@ -10,6 +10,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
@@ -53,6 +54,15 @@ public class LobbyControllerTest {
 				.andExpect(jsonPath("$.teamColor", is(player.getTeamColor().name())));
 	}
 
+	@Test
+	public void assignPlayerToTeam_invalidInput_returnsBadRequest() throws Exception {
+		MockHttpServletRequestBuilder putRequest = put("/api/lobbies/1/player/1/team")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(null));
+
+		mockMvc.perform(putRequest).andExpect(status().isBadRequest());
+	}
+
     @Test
 	public void assignPlayerToRole_validInput_returnsPlayerDTO() throws Exception {
 		PlayerDTO player = new PlayerDTO();
@@ -70,6 +80,16 @@ public class LobbyControllerTest {
 		mockMvc.perform(putRequest).andExpect(status().isOk())
 				.andExpect(jsonPath("$.role", is(player.getRole().name())));
 	}
+
+	@Test
+	public void assignPlayerToRole_invalidInput_returnsBadRequest() throws Exception {
+		MockHttpServletRequestBuilder putRequest = put("/api/lobbies/1/player/1/role")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(null));
+
+		mockMvc.perform(putRequest).andExpect(status().isBadRequest());
+	}
+
 
     /**
 	 * Helper Method to convert userPostDTO into a JSON string such that the input
