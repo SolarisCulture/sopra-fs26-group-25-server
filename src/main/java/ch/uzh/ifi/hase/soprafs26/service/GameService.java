@@ -10,6 +10,7 @@ import ch.uzh.ifi.hase.soprafs26.entity.WordCard;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,12 +27,15 @@ public class GameService {
 
     private final LobbyRepository lobbyRepository;
     private final WordService wordService;
+    private final GameWebSocketHandler gameWebSocketHandler;
 
 
-    public GameService(LobbyRepository lobbyRepository, WordService wordService) {
+    public GameService(LobbyRepository lobbyRepository, WordService wordService, GameWebSocketHandler gameWebSocketHandler) {
         this.lobbyRepository = lobbyRepository;
         this.wordService = wordService;
+        this.gameWebSocketHandler = gameWebSocketHandler;
     }
+
 
     public Game startGame(String lobbyCode) {
 
@@ -73,6 +77,11 @@ public class GameService {
         lobby.setGame(game);
         lobbyRepository.save(lobby);
 
+        // 7. Build both views and pass them to the handler
+        GameBoardDTO spymasterBoard = buildBoardDTO(game, Role.SPY);
+        GameBoardDTO operativeBoard = buildBoardDTO(game, Role.OPERATIVE);
+        gameWebSocketHandler.broadcastGameStarted(lobbyCode, spymasterBoard, operativeBoard);
+
         return game;
     }
 
@@ -87,7 +96,12 @@ public class GameService {
         Lobby lobby = lobbyOptional.get();
         Game game = lobby.getGame();
 
-        // 2. Create CardDTO
+        return buildBoardDTO(game, role);
+    }
+
+
+    private GameBoardDTO buildBoardDTO(Game game, Role role) {
+        // 1. Create CardDTO
         List<CardDTO> cardDTOs = new ArrayList<>();
         List<CardType> keyCard = new ArrayList<>();
 
@@ -96,7 +110,7 @@ public class GameService {
             dto.setWord(card.getWord());
             dto.setRevealed(card.isRevealed());
 
-            if (role == Role.SPYMASTER || card.isRevealed()) {
+            if (role == Role.SPY || card.isRevealed()) {
                 dto.setCardType(card.getCardType());
             }
 
@@ -114,7 +128,7 @@ public class GameService {
         boardDTO.setCards(cardDTOs);
 
         // 4. Only spymaster gets the key card
-        if (role == Role.SPYMASTER) {
+        if (role == Role.SPY) {
             boardDTO.setKeyCard(keyCard);
         }
 
@@ -140,4 +154,5 @@ public class GameService {
         Collections.shuffle(types);
         return types;
     }
+
 }
