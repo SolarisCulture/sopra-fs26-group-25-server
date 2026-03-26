@@ -21,6 +21,10 @@ public class Lobby {
     @Column(nullable = false)
     private Long hostId;
 
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true) // `orphanRemoval = true` ensures that if a child is removed from the parent collection, it is also deleted from the database.
+    @JoinColumn(name = "game_id")
+    private Game game;
+
     /* 
     @OneToMany => One lobby can have many players
     cascade => saving/deleting lobby also saves/delets players
@@ -67,6 +71,9 @@ public class Lobby {
 
     public Long getHostId() { return hostId;}
     public void setHostId(Long hostId) { this.hostId = hostId; }
+
+    public Game getGame() { return game; }
+    public void setGame(Game game) { this.game = game; }
 
     public List<Player> getPlayerList() { return playerList; }
     public void setPlayerList(List<Player> playerList) { this.playerList = playerList; }
