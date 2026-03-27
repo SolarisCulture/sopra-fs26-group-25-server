@@ -30,20 +30,21 @@ public class GameControllerTest {
 
     @Test
     public void startGame_validLobby_returns201() throws Exception {
-        // Arrange
+        // Set up
         Game game = new Game();
         given(gameService.startGame("ABC123")).willReturn(game);
 
-        // Act & Assert
+        // simulate an HTTP request
         mockMvc.perform(post("/api/games/ABC123/start"))
                 .andExpect(status().isCreated());
 
+        // make sure the service was actually called
         verify(gameService).startGame("ABC123");
     }
 
     @Test
     public void getBoard_asSpy_returnsHiddenCardTypes() throws Exception {
-        // Arrange
+        // Set up
         CardDTO card1 = new CardDTO();
         card1.setWord("APPLE");
         card1.setCardType(null);  // hidden
@@ -63,13 +64,14 @@ public class GameControllerTest {
         boardDTO.setCards(List.of(card1, card2));
         boardDTO.setKeyCard(null);  // no key card for spy
 
+        // Tell the mock to return boardDTO when called correctly
         given(gameService.getBoard("ABC123", Role.SPY)).willReturn(boardDTO);
 
-        // Act & Assert
+        // Simulate the HTTP request
         mockMvc.perform(get("/api/games/ABC123/board")
-                        .param("role", "SPYMASTER"))
+                        .param("role", "SPY"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.gameId", is(1)))
+                .andExpect(jsonPath("$.id", is(1)))
                 .andExpect(jsonPath("$.status", is("ACTIVE")))
                 .andExpect(jsonPath("$.currentTurn", is("RED")))
                 .andExpect(jsonPath("$.cards", hasSize(2)))
@@ -82,7 +84,7 @@ public class GameControllerTest {
 
     @Test
     public void getBoard_asSpymaster_returnsFullBoard() throws Exception {
-        // Arrange
+        // Set up
         CardDTO card = new CardDTO();
         card.setWord("APPLE");
         card.setCardType(CardType.AGENTRED);
@@ -93,11 +95,12 @@ public class GameControllerTest {
         boardDTO.setStatus(GameStatus.ACTIVE);
         boardDTO.setCurrentTurn(TeamColor.RED);
         boardDTO.setCards(List.of(card));
-        boardDTO.setKeyCard(List.of(CardType.AGENTRED));
+        boardDTO.setKeyCard(List.of(CardType.AGENTRED)); // key card for spymaster
 
+        // Tell the mock to return boardDTO when called correctly
         given(gameService.getBoard("ABC123", Role.SPYMASTER)).willReturn(boardDTO);
 
-        // Act & Assert
+        // Simulate the HTTP request
         mockMvc.perform(get("/api/games/ABC123/board")
                         .param("role", "SPYMASTER"))
                 .andExpect(status().isOk())
@@ -107,7 +110,7 @@ public class GameControllerTest {
 
     @Test
     public void getBoard_missingRoleParam_returns400() throws Exception {
-        // Act & Assert — no role parameter
+        // Simulate the HTTP request without role parameter
         mockMvc.perform(get("/api/games/ABC123/board"))
                 .andExpect(status().isBadRequest());
     }

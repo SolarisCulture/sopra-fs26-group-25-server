@@ -21,6 +21,7 @@ public class WordService {
             "VIOLET", "WAVE", "YARD", "ZERO", "TOWER"
     );
 
+    // Call this method also from WordServiceTest
     public List<String> getWordsForGame() {
         List<String> pool = new ArrayList<>(DEFAULT_WORDS);
         Collections.shuffle(pool);

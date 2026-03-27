@@ -1,12 +1,14 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
 import ch.uzh.ifi.hase.soprafs26.constant.CardType;
+import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Board;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.WordCard;
+import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
@@ -26,12 +28,14 @@ import java.util.Optional;
 public class GameService {
 
     private final LobbyRepository lobbyRepository;
+    private final GameRepository gameRepository;
     private final WordService wordService;
     private final GameWebSocketHandler gameWebSocketHandler;
 
 
-    public GameService(LobbyRepository lobbyRepository, WordService wordService, GameWebSocketHandler gameWebSocketHandler) {
+    public GameService(LobbyRepository lobbyRepository, GameRepository gameRepository, WordService wordService, GameWebSocketHandler gameWebSocketHandler) {
         this.lobbyRepository = lobbyRepository;
+        this.gameRepository = gameRepository;
         this.wordService = wordService;
         this.gameWebSocketHandler = gameWebSocketHandler;
     }
@@ -47,14 +51,19 @@ public class GameService {
         }
         Lobby lobby = lobbyOptional.get();
 
-        // 2. Fetch 25 random words
+        // 2. Check if game already running
+        if (lobby.getGame() != null && lobby.getGame().getStatus() == GameStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game already in progress");
+        }
+
+        // 3. Fetch 25 random words
         // for now short hardcoded list of words
         List<String> words = wordService.getWordsForGame();
 
-        // 3.Generate card type distribution (the "key card")
+        // 4.Generate card type distribution (the "key card")
         List<CardType> types = generateCardTypes();
 
-        // 4. Create word cards
+        // 5. Create word cards
         List<WordCard> cards = new ArrayList<>();
         for (int i = 0; i < 25; i++) {
             WordCard card = new WordCard();
@@ -64,20 +73,26 @@ public class GameService {
             cards.add(card);
         }
 
-        // 5. Create board
+        // 6. Create board
         Board board = new Board();
         board.setCards(cards);
 
-        // 6. Create game
+        // 7. Create game
         Game game = new Game();
         game.setBoard(board);
+        board.setGame(game);
+
+        game.setStatus(GameStatus.ACTIVE);
         game.setCurrentTurn(TeamColor.RED);
         game.setMaxRounds(lobby.getSettings().getRounds());
+        gameRepository.save(game);
 
         lobby.setGame(game);
+        game.setLobby(lobby);
+
         lobbyRepository.save(lobby);
 
-        // 7. Build both views and pass them to the handler
+        // 8. Build both views and pass them to the handler
         GameBoardDTO spymasterBoard = buildBoardDTO(game, Role.SPYMASTER);
         GameBoardDTO operativeBoard = buildBoardDTO(game, Role.SPY);
         gameWebSocketHandler.broadcastGameStarted(lobbyCode, spymasterBoard, operativeBoard);

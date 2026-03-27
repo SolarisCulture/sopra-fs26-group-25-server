@@ -34,48 +34,52 @@ public class GameServiceIntegrationTest {
 
     @Test
     public void startGame_createsFullGameAndPersistsToDatabase() {
-        // Act — start a game for the lobby
+        // Start the game
         String lobbyCode = testLobby.getLobbyCode();
         Game game = gameService.startGame(lobbyCode);
 
-        // Assert — game is created correctly
+        System.out.println("Game object: " + game);
+        System.out.println("Game ID: " + game.getId());
+        System.out.println("Board ID: " + (game.getBoard() != null ? game.getBoard().getId() : null));
+
+        // Check that game created correctly
         assertNotNull(game);
-        assertNotNull(game.getId());  // persisted, has an ID
+        assertNotNull(game.getId());
         assertEquals(GameStatus.ACTIVE, game.getStatus());
         assertEquals(TeamColor.RED, game.getCurrentTurn());
 
-        // Assert — board has 25 cards
+        // Check that board has 25 cards
         assertNotNull(game.getBoard());
         assertNotNull(game.getBoard().getId());  // board also persisted
         assertEquals(25, game.getBoard().getCards().size());
 
         // Assert — correct card type distribution
-        long red = game.getBoard().getCards().stream()
+        long redCount = game.getBoard().getCards().stream()
                 .filter(c -> c.getCardType() == CardType.AGENTRED).count();
-        long blue = game.getBoard().getCards().stream()
+        long blueCount = game.getBoard().getCards().stream()
                 .filter(c -> c.getCardType() == CardType.AGENTBLUE).count();
-        long civilian = game.getBoard().getCards().stream()
+        long civilianCount = game.getBoard().getCards().stream()
                 .filter(c -> c.getCardType() == CardType.CIVILIAN).count();
-        long assassin = game.getBoard().getCards().stream()
+        long assassinCount = game.getBoard().getCards().stream()
                 .filter(c -> c.getCardType() == CardType.ASSASSIN).count();
 
-        assertEquals(9, red, "Should have 9 red cards");
-        assertEquals(8, blue, "Should have 8 blue cards");
-        assertEquals(7, civilian, "Should have 7 civilian cards");
-        assertEquals(1, assassin, "Should have 1 assassin card");
+        assertEquals(9, redCount);
+        assertEquals(8, blueCount);
+        assertEquals(7, civilianCount);
+        assertEquals(1, assassinCount);
 
-        // Assert — all words are unique
+        // Chack that all words are unique
         long uniqueWords = game.getBoard().getCards().stream()
                 .map(WordCard::getWord)
                 .distinct().count();
         assertEquals(25, uniqueWords, "All 25 words should be unique");
 
-        // Assert — game is linked to lobby in database
+        // Chack that game is linked to lobby in database
         Lobby reloaded = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow();
         assertNotNull(reloaded.getGame());
         assertEquals(game.getId(), reloaded.getGame().getId());
 
-        // Assert — role-based board filtering works end to end
+        // Chack that  role-based board filtering works end to end
         GameBoardDTO spymasterView = gameService.getBoard(lobbyCode, Role.SPYMASTER);
         GameBoardDTO spyView = gameService.getBoard(lobbyCode, Role.SPY);
 
@@ -91,7 +95,6 @@ public class GameServiceIntegrationTest {
 
     @Test
     public void startGame_lobbyNotFound_throwsNotFound() {
-        // Act & Assert
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class, () -> {
                     gameService.startGame("INVALID");

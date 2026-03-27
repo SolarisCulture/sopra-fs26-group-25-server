@@ -3,9 +3,6 @@ package ch.uzh.ifi.hase.soprafs26.rest.dto;
 import ch.uzh.ifi.hase.soprafs26.constant.CardType;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
-import ch.uzh.ifi.hase.soprafs26.entity.Board;
-import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
-import jakarta.persistence.*;
 
 import java.util.List;
 
@@ -20,7 +17,7 @@ public class GameBoardDTO {
     private List<CardType> keyCard;
 
     public Long getId() { return id; }
-    public void setId(Long gameId) { this.id = id; }
+    public void setId(Long id) { this.id = id; }
 
     public GameStatus getStatus() { return status; }
     public void setStatus(GameStatus status) { this.status = status; }
