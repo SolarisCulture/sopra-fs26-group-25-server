@@ -8,6 +8,7 @@ import ch.uzh.ifi.hase.soprafs26.entity.Board;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.WordCard;
+import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
@@ -38,6 +39,9 @@ class GameServiceTest {
     @Mock
     private GameWebSocketHandler gameWebSocketHandler;
 
+    @Mock
+    private GameRepository gameRepository;
+
     @InjectMocks
     private GameService gameService;
 
@@ -57,6 +61,11 @@ class GameServiceTest {
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
         when(wordService.getWordsForGame()).thenCallRealMethod();  // use real word list
         when(lobbyRepository.save(any(Lobby.class))).thenReturn(testLobby);
+        when(gameRepository.save(any(Game.class))).thenAnswer(invocation -> {
+            Game g = invocation.getArgument(0);
+            g.setId(1L);  // simulate DB auto-generated ID
+            return g;
+        });
 
         // Call the real method we're testing
         Game game = gameService.startGame("ABC123");
@@ -89,6 +98,7 @@ class GameServiceTest {
 
         // Verify save was called
         verify(lobbyRepository).save(any(Lobby.class));
+        verify(gameRepository).save(any(Game.class));
     }
 
     @Test
