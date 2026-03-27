@@ -31,13 +31,14 @@ public class LobbyControllerTest {
 	@MockitoBean
 	private LobbyService lobbyService;
 
+	// assignPlayerToTeam
 	@Test
 	public void assignPlayerToTeam_validInput_returnsOk() throws Exception {
 		PlayerDTO player = new PlayerDTO();
-        player.setTeamColor(TeamColor.BLUE);
+        player.setTeam(TeamColor.BLUE);
 
         PlayerDTO teamDTO = new PlayerDTO();
-        teamDTO.setTeamColor(TeamColor.BLUE);
+        teamDTO.setTeam(TeamColor.BLUE);
 
 		willDoNothing().given(lobbyService).assignTeam(Mockito.any(), Mockito.any(), Mockito.any());
 
@@ -57,6 +58,7 @@ public class LobbyControllerTest {
 		mockMvc.perform(putRequest).andExpect(status().isBadRequest());
 	}
 
+	// assignPlayerToRole
     @Test
 	public void assignPlayerToRole_validInput_returnsOk() throws Exception {
 		PlayerDTO player = new PlayerDTO();

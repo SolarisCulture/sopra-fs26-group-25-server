@@ -16,7 +16,10 @@ import static org.mockito.Mockito.verify;
 import org.mockito.MockitoAnnotations;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import ch.uzh.ifi.hase.soprafs26.constant.Role;
+import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
 
 class LobbyWebSocketHandlerTest {
@@ -283,6 +286,56 @@ class LobbyWebSocketHandlerTest {
 
         // Then
         verify(messagingTemplate, times(3)).convertAndSend(anyString(), any(LobbyEvent.class));
+    }
+
+    // Team Update
+    @Test
+    void broadcastTeamUpdated_shouldSendToCorrectTopic() {
+        // Given
+        String lobbyCode = "ABC123";
+        PlayerDTO playerDTO = new PlayerDTO();
+        playerDTO.setId(1L);
+        playerDTO.setUsername("player1");
+        playerDTO.setTeam(TeamColor.RED);
+
+        // When
+        lobbyWebSocketHandler.broadcastTeamUpdated(lobbyCode, playerDTO);
+
+        // Then
+        ArgumentCaptor<LobbyEvent> eventCaptor = ArgumentCaptor.forClass(LobbyEvent.class);
+        verify(messagingTemplate, times(1))
+            .convertAndSend(eq("/topic/lobbies/" + lobbyCode), eventCaptor.capture());
+
+        LobbyEvent event = eventCaptor.getValue();
+        assertEquals("TEAM_UPDATED", event.getType());
+        assertEquals(lobbyCode, event.getLobbyCode());
+        assertEquals(playerDTO, event.getData());
+        assertNotNull(event.getTimestamp());
+    }
+
+    // Role Update
+    @Test
+    void broadcastRoleUpdated_shouldSendToCorrectTopic() {
+        // Given
+        String lobbyCode = "ABC123";
+        PlayerDTO playerDTO = new PlayerDTO();
+        playerDTO.setId(1L);
+        playerDTO.setUsername("player1");
+        playerDTO.setRole(Role.SPYMASTER);
+
+        // When
+        lobbyWebSocketHandler.broadcastRoleUpdated(lobbyCode, playerDTO);
+
+        // Then
+        ArgumentCaptor<LobbyEvent> eventCaptor = ArgumentCaptor.forClass(LobbyEvent.class);
+        verify(messagingTemplate, times(1))
+            .convertAndSend(eq("/topic/lobbies/" + lobbyCode), eventCaptor.capture());
+
+        LobbyEvent event = eventCaptor.getValue();
+        assertEquals("ROLE_UPDATED", event.getType());
+        assertEquals(lobbyCode, event.getLobbyCode());
+        assertEquals(playerDTO, event.getData());
+        assertNotNull(event.getTimestamp());
     }
 }
 

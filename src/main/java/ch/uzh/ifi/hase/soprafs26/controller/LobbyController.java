@@ -26,7 +26,7 @@ public class LobbyController {
 	@ResponseBody
 	public void assignPlayerToTeam(@PathVariable String lobbyCode, @PathVariable Long playerId, @RequestBody PlayerDTO playerDTO) {
 		if (lobbyCode == null || playerId == null || playerDTO == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
-		lobbyService.assignTeam(lobbyCode, playerId, playerDTO.getTeamColor());
+		lobbyService.assignTeam(lobbyCode, playerId, playerDTO.getTeam());
 	}
 
     @PutMapping("/api/lobbies/{lobbyCode}/player/{playerId}/role")  

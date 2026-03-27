@@ -5,8 +5,8 @@ import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 
 public class PlayerDTO {
 	private String username;
-    private Long playerId;
-    private TeamColor teamColor;
+    private Long id;
+    private TeamColor team;
     private Role role;
     private boolean isHost;
 
@@ -18,20 +18,20 @@ public class PlayerDTO {
 		this.username = username;
 	}
 
-    public Long getPlayerId() {
-		return playerId;
+    public Long getId() {
+		return id;
 	}
 
-	public void setPlayerId(Long playerId) {
-		this.playerId = playerId;
+	public void setId(Long id) {
+		this.id = id;
 	}
 
-    public TeamColor getTeamColor() {
-        return this.teamColor;
+    public TeamColor getTeam() {
+        return this.team;
     }
 
-    public void setTeamColor(TeamColor teamColor) {
-        this.teamColor = teamColor;
+    public void setTeam(TeamColor team) {
+        this.team = team;
     }
 
     public Role getRole() {

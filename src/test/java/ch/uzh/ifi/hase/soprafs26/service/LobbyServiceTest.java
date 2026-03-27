@@ -6,7 +6,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
@@ -14,11 +13,13 @@ import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
+import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.mockito.Mockito.when;
 
-import java.lang.StackWalker.Option;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,12 @@ public class LobbyServiceTest {
 
 	@Mock
 	private LobbyRepository lobbyRepository;
+
+	@Mock
+	private DTOMapper dtoMapper;
+
+	@Mock
+	private LobbyWebSocketHandler lobbyWebSocketHandler;
 
 	@InjectMocks
 	private LobbyService lobbyService;
@@ -74,9 +81,11 @@ public class LobbyServiceTest {
 		testLobby.setPlayerList(playerList);
 	}
 
+	// assignTeam
     @Test
 	public void assignTeam_validInput_changesTeam() {
 		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+		Mockito.when(dtoMapper.convertEntityToPlayerDTO(player1)).thenReturn(new PlayerDTO());
 
 		lobbyService.assignTeam(testLobby.getLobbyCode(), player1.getId(), TeamColor.RED);
 
@@ -90,9 +99,11 @@ public class LobbyServiceTest {
 		assertThrows(ResponseStatusException.class, () -> lobbyService.assignTeam("333", player1.getId(), TeamColor.RED));
 	};
 
+	// assignRole
 	@Test
 	public void assignRole_validInput_changesRole() {
 		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+		Mockito.when(dtoMapper.convertEntityToPlayerDTO(player2)).thenReturn(new PlayerDTO());
 
 		lobbyService.assignRole(testLobby.getLobbyCode(), player2.getId(), Role.SPY);
 
@@ -106,6 +117,7 @@ public class LobbyServiceTest {
 		assertThrows(ResponseStatusException.class, () -> lobbyService.assignRole("333", player2.getId(), Role.SPY));
 	};
 
+	// canStartGame
 	@Test
 	public void assignTeam_invalidInput_returnsNotAuthorized() {
 		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));

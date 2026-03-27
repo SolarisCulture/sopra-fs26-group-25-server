@@ -48,6 +48,18 @@ public class LobbyWebSocketHandler {
         messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyCode, event);
     }
 
+    public void broadcastTeamUpdated(String lobbyCode, Object playerData) {
+        LobbyEvent event = LobbyEvent.teamUpdated(lobbyCode, playerData);
+        log.info("Broadcasting TEAM_UPDATED for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyCode, event);
+    }
+
+    public void broadcastRoleUpdated(String lobbyCode, Object playerData) {
+        LobbyEvent event = LobbyEvent.roleUpdated(lobbyCode, playerData);
+        log.info("Broadcasting ROLE_UPDATED for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyCode, event);
+    }
+
     @MessageMapping("/lobby/{lobbyCode}/subscribe") // Receive client here if asked to subscribe => run this code
     @SendTo("/topic/lobbies/{lobbyCode}") // Client now subscribed to this lobby
     public LobbyEvent subscribeToLobby(@DestinationVariable String lobbyCode, LobbyEvent event){

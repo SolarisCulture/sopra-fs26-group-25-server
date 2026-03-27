@@ -11,6 +11,9 @@ import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
+import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -18,16 +21,22 @@ import jakarta.transaction.Transactional;
 public class LobbyService {     
 
     private final LobbyRepository lobbyRepository;
+    private final LobbyWebSocketHandler lobbyWebSocketHandler;
 
-    public LobbyService(LobbyRepository lobbyRepository) {
+    public LobbyService(LobbyRepository lobbyRepository, LobbyWebSocketHandler lobbyWebSocketHandler) {
         this.lobbyRepository = lobbyRepository;
+        this.lobbyWebSocketHandler = lobbyWebSocketHandler;
     }
 
-    public void assignTeam(String lobbyCode, Long playerID, TeamColor TeamColor) {          // lobbyCode or lobbyId --> Don't know if it matters much here
+    public void assignTeam(String lobbyCode, Long playerID, TeamColor team) {          // lobbyCode or lobbyId --> Don't know if it matters much here
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
         Player player = lobby.getPlayerById(playerID);
 
-        player.setTeam(TeamColor);
+        player.setTeam(team);
+
+        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      // remove if we send player
+        // Websocket --> broadcasts the update
+        lobbyWebSocketHandler.broadcastTeamUpdated(lobbyCode, playerDTO);              // player or playerDTO? --> playerDTO since the controller receives playerDTO as argument
     }
 
     public void assignRole(String lobbyCode, Long playerID, Role role){  
@@ -46,6 +55,10 @@ public class LobbyService {
         } else {
             player.setRole(Role.SPY);
         }
+
+        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      // Same as above
+        // Websocket --> broadcasts the update
+        lobbyWebSocketHandler.broadcastRoleUpdated(lobbyCode, playerDTO);              // Same as above
     }
 
     public boolean canStartGame(String lobbyCode) {
