@@ -99,7 +99,7 @@ public class GameServiceIntegrationTest {
                 ResponseStatusException.class, () -> {
                     gameService.startGame("INVALID");
                 });
-
+        // Assertion
         assertEquals(404, exception.getStatusCode().value());
     }
 }
