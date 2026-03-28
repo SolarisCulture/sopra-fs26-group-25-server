@@ -18,7 +18,6 @@ import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -111,20 +110,34 @@ public class LobbyServiceTest {
 	};
 
 	@Test
+	public void assignRole_validInputWithNoSpymasterAssignedYet_changesRole() {
+		testLobby.addPlayer(player1);
+		testLobby.addPlayer(player2);
+
+		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+		Mockito.when(dtoMapper.convertEntityToPlayerDTO(Mockito.any())).thenReturn(new PlayerDTO());
+
+		lobbyService.assignRole(testLobby.getLobbyCode(), player2.getId(), Role.SPY);
+		lobbyService.assignRole(testLobby.getLobbyCode(), player1.getId(), Role.SPYMASTER);
+
+		assertEquals(Role.SPYMASTER, player1.getRole());
+	};
+
+	@Test
 	public void assignRole_invalidInput_returnsNotFound() {
 		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.empty());
 
 		assertThrows(ResponseStatusException.class, () -> lobbyService.assignRole("333", player2.getId(), Role.SPY));
 	};
 
-	// canStartGame
 	@Test
-	public void assignTeam_invalidInput_returnsNotAuthorized() {
+	public void assignRole_invalidInput_returnsNotAuthorized() {
 		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
 
 		assertThrows(ResponseStatusException.class, () -> lobbyService.assignRole(testLobby.getLobbyCode(), player1.getId(), Role.SPYMASTER));
 	};
 
+	// canStartGame
     @Test
 	public void canStartGame_validInput_returnsTrue() {
 		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));

@@ -14,10 +14,8 @@ import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
-import jakarta.transaction.Transactional;
 
 @Service
-@Transactional  // needed?
 public class LobbyService {     
 
     private final LobbyRepository lobbyRepository;
@@ -28,15 +26,15 @@ public class LobbyService {
         this.lobbyWebSocketHandler = lobbyWebSocketHandler;
     }
 
-    public void assignTeam(String lobbyCode, Long playerID, TeamColor team) {          // lobbyCode or lobbyId --> Don't know if it matters much here
+    public void assignTeam(String lobbyCode, Long playerID, TeamColor team) {          
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
         Player player = lobby.getPlayerById(playerID);
 
         player.setTeam(team);
 
-        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      // remove if we send player
+        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      
         // Websocket --> broadcasts the update
-        lobbyWebSocketHandler.broadcastTeamUpdated(lobbyCode, playerDTO);              // player or playerDTO? --> playerDTO since the controller receives playerDTO as argument
+        lobbyWebSocketHandler.broadcastTeamUpdated(lobbyCode, playerDTO);            
     }
 
     public void assignRole(String lobbyCode, Long playerID, Role role){  
@@ -46,19 +44,18 @@ public class LobbyService {
         
         // Checks if there is already one Spymaster (only if the changed role is Spymaster)
         if (role == Role.SPYMASTER) {
-            Integer counter = 0;
-            for (Player playerFromList : playerList) {
-                if (playerFromList.getRole() == Role.SPYMASTER) {counter+=1;}
+            long existingSpymasterCount = playerList.stream()
+                .filter(p -> p.getRole() == Role.SPYMASTER && !p.getId().equals(playerID) && p.getTeam() == player.getTeam())
+                .count();
+            if (existingSpymasterCount > 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Team already has a spymaster");
             }
-            if (counter > 0) {throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "There are too many Spymasters!");}
-            else {player.setRole(Role.SPYMASTER);}
-        } else {
-            player.setRole(Role.SPY);
         }
+        player.setRole(role); // Sets the player's role to the new value
 
-        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      // Same as above
+        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      
         // Websocket --> broadcasts the update
-        lobbyWebSocketHandler.broadcastRoleUpdated(lobbyCode, playerDTO);              // Same as above
+        lobbyWebSocketHandler.broadcastRoleUpdated(lobbyCode, playerDTO);            
     }
 
     public boolean canStartGame(String lobbyCode) {
