@@ -1,6 +1,9 @@
 package ch.uzh.ifi.hase.soprafs26.controller;
 
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.willDoNothing;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -9,11 +12,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.TransferHostRequest;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -29,8 +36,47 @@ public class LobbyControllerTest {
     @Autowired
 	private MockMvc mockMvc;
 
+	@Autowired
+    private ObjectMapper objectMapper;
+
 	@MockitoBean
 	private LobbyService lobbyService;
+
+	// Host Transfer
+	@Test
+    public void transferHost_validRequest_returnsOk() throws Exception {
+        TransferHostRequest request = new TransferHostRequest();
+        request.setCurrentHostId(1L);
+        request.setNewHostId(2L);
+
+        willDoNothing().given(lobbyService).transferHost(anyString(), anyLong(), anyLong());
+
+        mockMvc.perform(put("/api/lobbies/ABC123/host/transfer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+	@Test
+    public void transferHost_missingCurrentHostId_returnsBadRequest() throws Exception {
+        TransferHostRequest request = new TransferHostRequest();
+        request.setNewHostId(2L);
+
+        mockMvc.perform(put("/api/lobbies/ABC123/host/transfer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+	// Leave Lobby
+	@Test
+    public void leaveLobby_validRequest_returnsNoContent() throws Exception {
+        willDoNothing().given(lobbyService).leaveLobby(anyString(), anyLong());
+
+        mockMvc.perform(delete("/api/lobbies/ABC123/players/1")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
+    }
 
 	// assignPlayerToTeam
 	@Test
