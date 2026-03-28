@@ -29,7 +29,7 @@ public class GameEvent {
     public void setBoard(GameBoardDTO board) { this.board = board; }
 
     // Factory methods for convenience
-    public static LobbyEvent gameStarted(String lobbyCode, GameBoardDTO board){
-        return new LobbyEvent("GAME_STARTED", lobbyCode, board);
+    public static GameEvent gameStarted(String lobbyCode, GameBoardDTO board){
+        return new GameEvent("GAME_STARTED", lobbyCode, board);
     }
 }
