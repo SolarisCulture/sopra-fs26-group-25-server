@@ -57,4 +57,12 @@ public class LobbyEvent {
     public static LobbyEvent hostChanged(String lobbyCode, Object newHostData){
         return new LobbyEvent("HOST_CHANGED", lobbyCode, newHostData);
     }
+
+    public static LobbyEvent teamUpdated(String lobbyCode, Object playerData) {
+        return new LobbyEvent("TEAM_UPDATED", lobbyCode, playerData);
+    }
+
+    public static LobbyEvent roleUpdated(String lobbyCode, Object playerData) {
+        return new LobbyEvent("ROLE_UPDATED", lobbyCode, playerData);
+    }
 }
