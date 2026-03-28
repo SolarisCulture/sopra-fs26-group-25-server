@@ -1,6 +1,8 @@
 package ch.uzh.ifi.hase.soprafs26.controller;
 
 import org.junit.jupiter.api.Test;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -9,18 +11,20 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
-
-import static org.mockito.BDDMockito.willDoNothing;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
 @WebMvcTest(LobbyController.class)
@@ -30,6 +34,57 @@ public class LobbyControllerTest {
 
 	@MockitoBean
 	private LobbyService lobbyService;
+	
+	// Lobby Creation/Retrieval
+	@Test
+    public void createLobby_returnsCreatedAndLobbyData() throws Exception {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+
+        given(lobbyService.createLobby()).willReturn(lobby);
+
+        // When/Then
+        mockMvc.perform(post("/api/lobbies")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.lobbyCode").value("ABC123"))
+                .andExpect(jsonPath("$.hostId").value(1));
+    }
+
+	@Test
+    public void getLobby_validCode_returnsOkAndLobbyData() throws Exception {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+
+        given(lobbyService.getLobbyByCode("ABC123")).willReturn(lobby);
+
+        // When/Then
+        mockMvc.perform(get("/api/lobbies/ABC123")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.lobbyCode").value("ABC123"))
+                .andExpect(jsonPath("$.hostId").value(1));
+    }
+
+	@Test
+    public void getLobby_invalidCode_returnsNotFound() throws Exception {
+        // Given
+        given(lobbyService.getLobbyByCode("INVALID"))
+            .willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        // When/Then
+        mockMvc.perform(get("/api/lobbies/INVALID")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
 
 	// assignPlayerToTeam
 	@Test

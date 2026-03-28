@@ -1,10 +1,25 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -16,13 +31,6 @@ import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 public class LobbyServiceTest {
 
@@ -79,6 +87,131 @@ public class LobbyServiceTest {
 		List<Player> playerList = new ArrayList<>(List.of(player1, player2, player3, player4));
 		testLobby.setPlayerList(playerList);
 	}
+
+	// Lobby Creation
+	@Test
+    public void createLobby_shouldGenerateUniqueCode() {
+        // Given
+        when(lobbyRepository.existsByLobbyCode(anyString())).thenReturn(false);
+        when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> {
+            Lobby saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
+
+        // When
+        Lobby lobby = lobbyService.createLobby();
+
+        // Then
+        assertNotNull(lobby);
+        assertNotNull(lobby.getLobbyCode());
+        assertEquals(6, lobby.getLobbyCode().length());
+        verify(lobbyRepository, times(1)).save(any(Lobby.class));
+    }
+
+	@Test
+    public void createLobby_shouldRetryOnDuplicateCode() {
+        // Given
+        when(lobbyRepository.existsByLobbyCode(anyString()))
+            .thenReturn(true)  // First attempt fails
+            .thenReturn(false); // Second attempt succeeds
+        when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> {
+            Lobby saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
+
+        // When
+        Lobby lobby = lobbyService.createLobby();
+
+        // Then
+        assertNotNull(lobby);
+        assertNotNull(lobby.getLobbyCode());
+        verify(lobbyRepository, times(2)).existsByLobbyCode(anyString());
+        verify(lobbyRepository, times(1)).save(any(Lobby.class));
+    }
+
+	@Test
+    public void createLobby_shouldAddHostPlayer() {
+        // Given
+        when(lobbyRepository.existsByLobbyCode(anyString())).thenReturn(false);
+        when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> {
+            Lobby saved = invocation.getArgument(0);
+            saved.setId(1L);
+
+			if (saved.getPlayerList() != null && !saved.getPlayerList().isEmpty()) {
+				Player host = saved.getPlayerList().get(0);
+				host.setId(1L);  // Simulate ID
+				saved.setHostId(host.getId());
+			}
+            return saved;
+        });
+
+        // When
+        Lobby lobby = lobbyService.createLobby();
+
+        // Then
+        assertNotNull(lobby.getPlayerList());
+        assertEquals(1, lobby.getPlayerList().size());
+        assertTrue(lobby.getPlayerList().get(0).isHost());
+        assertNotNull(lobby.getHostId());
+    }
+
+	@Test
+    public void createLobby_shouldBroadcastEvent() {
+        // Given
+        when(lobbyRepository.existsByLobbyCode(anyString())).thenReturn(false);
+        when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> {
+            Lobby saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
+
+        // When
+        Lobby lobby = lobbyService.createLobby();
+
+        // Then
+        verify(lobbyWebSocketHandler, times(1))
+            .broadcastLobbyCreated(lobby.getLobbyCode(), lobby);
+    }
+
+	// Get Lobby
+	@Test
+    public void getLobbyByCode_validCode_returnsLobby() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+
+        // When
+        Lobby result = lobbyService.getLobbyByCode("ABC123");
+
+        // Then
+        assertNotNull(result);
+        assertEquals("ABC123", result.getLobbyCode());
+        assertEquals(1L, result.getId());
+    }
+
+	@Test
+    public void getLobbyByCode_invalidCode_throwsNotFound() {
+        // Given
+        when(lobbyRepository.findByLobbyCode("INVALID")).thenReturn(Optional.empty());
+
+        // When/Then
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
+            lobbyService.getLobbyByCode("INVALID");
+        });
+        assertEquals(404, exception.getStatusCode().value());
+    }
+
+    @Test
+    public void getLobbyByCode_nullCode_throwsException() {
+        // When/Then
+        assertThrows(Exception.class, () -> {
+            lobbyService.getLobbyByCode(null);
+        });
+    }
 
 	// assignTeam
     @Test
