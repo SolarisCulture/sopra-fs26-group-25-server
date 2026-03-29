@@ -20,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
@@ -83,6 +84,28 @@ public class LobbyControllerTest {
                 .content(asJsonString(null));
 
 		mockMvc.perform(putRequest).andExpect(status().isBadRequest());
+	}
+
+	// joinLobby
+	@Test
+	public void joinLobby_validInput_returnsOk() throws Exception {
+
+		willDoNothing().given(lobbyService).joinLobby(Mockito.any(), Mockito.any());
+
+		MockHttpServletRequestBuilder postRequest = post("/api/lobbies/123/join")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(asJsonString("Aldin"));
+
+		mockMvc.perform(postRequest).andExpect(status().isOk());
+	}
+
+	@Test
+	public void joinLobby_invalidInput_returnsBadRequest() throws Exception {
+
+		MockHttpServletRequestBuilder postRequest = post("/api/lobbies/123/join")
+				.contentType(MediaType.APPLICATION_JSON);
+
+		mockMvc.perform(postRequest).andExpect(status().isBadRequest());
 	}
 
 

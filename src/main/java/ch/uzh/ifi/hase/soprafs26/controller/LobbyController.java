@@ -11,6 +11,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
+import org.springframework.web.bind.annotation.PostMapping;
+
 
 @RestController
 public class LobbyController {
@@ -35,5 +37,13 @@ public class LobbyController {
 	public void assignPlayerToRole(@PathVariable String lobbyCode, @PathVariable Long playerId, @RequestBody PlayerDTO playerDTO) {  	
 		if (lobbyCode == null || playerId == null || playerDTO == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
 		lobbyService.assignRole(lobbyCode, playerId, playerDTO.getRole());
+	}
+
+	@PostMapping("/api/lobbies/{lobbyCode}/join")
+	@ResponseStatus(HttpStatus.OK)
+	@ResponseBody
+	public void joinLobby(@PathVariable String lobbyCode, @RequestBody String username) {
+		if (lobbyCode == null || username == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
+		lobbyService.joinLobby(lobbyCode, username);
 	}
 }
