@@ -3,8 +3,10 @@ package ch.uzh.ifi.hase.soprafs26.rest.mapper;
 import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
 
+import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.entity.User;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.LobbyDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.UserGetDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.UserPostDTO;
@@ -35,10 +37,21 @@ public interface DTOMapper {
 	@Mapping(source = "status", target = "status")
 	UserGetDTO convertEntityToUserGetDTO(User user);
 
+	// Player Mappings
     @Mapping(source = "id", target = "id")
     @Mapping(source = "username", target = "username")
     @Mapping(source = "team", target = "team")
     @Mapping(source = "role", target = "role")
 	@Mapping(source = "host", target = "isHost")
     PlayerDTO convertEntityToPlayerDTO(Player player);
+
+	// Lobby Mappings
+	@Mapping(source = "id", target = "id")
+    @Mapping(source = "lobbyCode", target = "lobbyCode")
+    @Mapping(source = "hostId", target = "hostId")
+    @Mapping(source = "playerList", target = "players")
+    @Mapping(source = "settings", target = "settings")
+    @Mapping(source = "createdAt", target = "createdAt")
+    @Mapping(source = "lobbyStatus", target = "lobbyStatus")
+    LobbyDTO convertEntityToLobbyDTO(Lobby lobby);
 }
