@@ -1,6 +1,7 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.Random;
 
 import org.springframework.http.HttpStatus;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
@@ -29,6 +31,31 @@ public class LobbyService {
         this.lobbyWebSocketHandler = lobbyWebSocketHandler;
     }
 
+    public Lobby createLobby(String hostUsername) {
+        // Validation
+        if (hostUsername == null || hostUsername.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Host username is required");
+        }
+        
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode(generateUniqueCode());
+        lobby.setLobbyStatus(LobbyStatus.WAITING);
+
+        Player host = new Player(hostUsername);
+        host.setHost(true);
+        lobby.addPlayer(host);
+        lobby.setHostId(host.getId());
+
+        Lobby savedLobby = lobbyRepository.save(lobby);
+        // Broadcast lobby created event
+        lobbyWebSocketHandler.broadcastLobbyCreated(savedLobby.getLobbyCode(), savedLobby);
+
+        return savedLobby;
+    }
+
+    public Lobby getLobbyByCode(String lobbyCode) {
+        return lobbyRepository.findByLobbyCode(lobbyCode)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
     public void transferHost(String lobbyCode, Long currentHostId, Long newHostId) {
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
 
@@ -127,26 +154,34 @@ public class LobbyService {
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
         List<Player> playerList = lobby.getPlayerList();
 
-        Integer SpyCountBlue = 0;
-        Integer SpymasterCountBlue = 0;
-        Integer SpyCountRed = 0;
-        Integer SpymasterCountRed = 0;
+        Integer spyCountBlue = 0;
+        Integer spymasterCountBlue = 0;
+        Integer spyCountRed = 0;
+        Integer spymasterCountRed = 0;
         for (Player playerFromList : playerList) {      // Count all the roles assigned
             Role playerRole = playerFromList.getRole();
             TeamColor playerTeamColor = playerFromList.getTeam();
 
             if (playerRole == Role.NONE) {return false;}
-            if (playerRole == Role.SPY && playerTeamColor == TeamColor.BLUE) {SpyCountBlue+=1;}
-            if (playerRole == Role.SPYMASTER && playerTeamColor == TeamColor.BLUE) {SpymasterCountBlue+=1;}
-            if (playerRole == Role.SPY && playerTeamColor == TeamColor.RED) {SpyCountRed+=1;}
-            if (playerRole == Role.SPYMASTER && playerTeamColor == TeamColor.BLUE) {SpymasterCountRed+=1;}
+            if (playerRole == Role.SPY && playerTeamColor == TeamColor.BLUE) {spyCountBlue+=1;}
+            if (playerRole == Role.SPYMASTER && playerTeamColor == TeamColor.BLUE) {spymasterCountBlue+=1;}
+            if (playerRole == Role.SPY && playerTeamColor == TeamColor.RED) {spyCountRed+=1;}
+            if (playerRole == Role.SPYMASTER && playerTeamColor == TeamColor.RED) {spymasterCountRed+=1;}
         }
         
-        if (SpyCountBlue > 0 && SpymasterCountBlue == 1 && SpyCountRed > 0 && SpymasterCountRed == 1){return true;} // Check if all the roles have atleast one player (or exactly one)
+        if (spyCountBlue > 0 && spymasterCountBlue == 1 && spyCountRed > 0 && spymasterCountRed == 1){return true;} // Check if all the roles have atleast one player (or exactly one)
         return false;
     }
 
     // Helper method
+    private String generateUniqueCode() {
+        String code;
+        do {
+            code = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        } while (lobbyRepository.existsByLobbyCode(code));
+        return code;
+    }
+
     private void assignNewHostRandomly(Lobby lobby) {
         List<Player> players = lobby.getPlayerList();
         if (players.isEmpty()) {
