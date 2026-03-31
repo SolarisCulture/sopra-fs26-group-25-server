@@ -21,6 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.entity.Player;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.LobbyDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 import tools.jackson.core.JacksonException;
@@ -37,22 +39,61 @@ public class LobbyControllerTest {
 	
 	// Lobby Creation/Retrieval
 	@Test
-    public void createLobby_returnsCreatedAndLobbyData() throws Exception {
+    public void createLobby_withHostUsername_returnsCreatedAndLobbyData() throws Exception {
         // Given
+        LobbyDTO request = new LobbyDTO();
+        request.setHostUsername("a");
+        
         Lobby lobby = new Lobby();
         lobby.setId(1L);
         lobby.setLobbyCode("ABC123");
         lobby.setHostId(1L);
+        
+        // Create host player
+        Player host = new Player("a");
+        host.setId(1L);
+        host.setHost(true);
+        lobby.addPlayer(host);
+        
+        given(lobbyService.createLobby("a")).willReturn(lobby);
 
-        given(lobbyService.createLobby()).willReturn(lobby);
+        given(lobbyService.createLobby("a")).willReturn(lobby);
 
         // When/Then
         mockMvc.perform(post("/api/lobbies")
-                .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.lobbyCode").value("ABC123"))
-                .andExpect(jsonPath("$.hostId").value(1));
+                .andExpect(jsonPath("$.hostId").value(1))
+                .andExpect(jsonPath("$.players[0].username").value("a"))
+                .andExpect(jsonPath("$.players[0].isHost").value(true));
+    }
+
+    @Test
+    public void createLobby_missingHostUsername_returnsBadRequest() throws Exception {
+        // Given: empty request
+        LobbyDTO request = new LobbyDTO();
+
+        // When/Then
+        mockMvc.perform(post("/api/lobbies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void createLobby_emptyHostUsername_returnsBadRequest() throws Exception {
+        // Given
+        LobbyDTO request = new LobbyDTO();
+        request.setHostUsername("");
+
+        // When/Then
+        mockMvc.perform(post("/api/lobbies")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(request)))
+                .andExpect(status().isBadRequest());
     }
 
 	@Test

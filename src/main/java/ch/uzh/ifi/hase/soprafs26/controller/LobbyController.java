@@ -29,8 +29,12 @@ public class LobbyController {
 	@PostMapping("/api/lobbies")
     @ResponseStatus(HttpStatus.CREATED)
     @ResponseBody
-    public LobbyDTO createLobby() {
-        Lobby lobby = lobbyService.createLobby();
+    public LobbyDTO createLobby(@RequestBody LobbyDTO request) {
+		if (request == null || request.getHostUsername() == null || request.getHostUsername().trim().isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Host username is required");
+		}
+		String hostUsername = request.getHostUsername();
+        Lobby lobby = lobbyService.createLobby(hostUsername);
         return DTOMapper.INSTANCE.convertEntityToLobbyDTO(lobby);
     }
 

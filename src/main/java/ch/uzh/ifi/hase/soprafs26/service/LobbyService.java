@@ -28,13 +28,17 @@ public class LobbyService {
         this.lobbyWebSocketHandler = lobbyWebSocketHandler;
     }
 
-    public Lobby createLobby() {
+    public Lobby createLobby(String hostUsername) {
+        // Validation
+        if (hostUsername == null || hostUsername.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Host username is required");
+        }
+        
         Lobby lobby = new Lobby();
         lobby.setLobbyCode(generateUniqueCode());
         lobby.setLobbyStatus(LobbyStatus.WAITING);
 
-        // Create host (temp host name => Not sure how we decided to set username for host anymore)
-        Player host = new Player("Host_" + lobby.getLobbyCode());
+        Player host = new Player(hostUsername);
         host.setHost(true);
         lobby.addPlayer(host);
         lobby.setHostId(host.getId());

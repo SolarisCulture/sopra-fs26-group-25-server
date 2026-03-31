@@ -92,6 +92,7 @@ public class LobbyServiceTest {
 	@Test
     public void createLobby_shouldGenerateUniqueCode() {
         // Given
+		String hostUsername = "testHost";
         when(lobbyRepository.existsByLobbyCode(anyString())).thenReturn(false);
         when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> {
             Lobby saved = invocation.getArgument(0);
@@ -100,7 +101,7 @@ public class LobbyServiceTest {
         });
 
         // When
-        Lobby lobby = lobbyService.createLobby();
+        Lobby lobby = lobbyService.createLobby(hostUsername);
 
         // Then
         assertNotNull(lobby);
@@ -112,6 +113,7 @@ public class LobbyServiceTest {
 	@Test
     public void createLobby_shouldRetryOnDuplicateCode() {
         // Given
+		String hostUsername = "testHost";
         when(lobbyRepository.existsByLobbyCode(anyString()))
             .thenReturn(true)  // First attempt fails
             .thenReturn(false); // Second attempt succeeds
@@ -122,7 +124,7 @@ public class LobbyServiceTest {
         });
 
         // When
-        Lobby lobby = lobbyService.createLobby();
+        Lobby lobby = lobbyService.createLobby(hostUsername);
 
         // Then
         assertNotNull(lobby);
@@ -134,6 +136,7 @@ public class LobbyServiceTest {
 	@Test
     public void createLobby_shouldAddHostPlayer() {
         // Given
+		String hostUsername = "a";
         when(lobbyRepository.existsByLobbyCode(anyString())).thenReturn(false);
         when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> {
             Lobby saved = invocation.getArgument(0);
@@ -148,18 +151,21 @@ public class LobbyServiceTest {
         });
 
         // When
-        Lobby lobby = lobbyService.createLobby();
+        Lobby lobby = lobbyService.createLobby(hostUsername);
 
         // Then
         assertNotNull(lobby.getPlayerList());
         assertEquals(1, lobby.getPlayerList().size());
+		assertEquals("a", lobby.getPlayerList().get(0).getUsername());
         assertTrue(lobby.getPlayerList().get(0).isHost());
         assertNotNull(lobby.getHostId());
+		assertEquals(lobby.getPlayerList().get(0).getId(), lobby.getHostId());
     }
 
 	@Test
     public void createLobby_shouldBroadcastEvent() {
         // Given
+		String hostUsername = "testHost";
         when(lobbyRepository.existsByLobbyCode(anyString())).thenReturn(false);
         when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> {
             Lobby saved = invocation.getArgument(0);
@@ -168,12 +174,65 @@ public class LobbyServiceTest {
         });
 
         // When
-        Lobby lobby = lobbyService.createLobby();
+        Lobby lobby = lobbyService.createLobby(hostUsername);
 
         // Then
         verify(lobbyWebSocketHandler, times(1))
             .broadcastLobbyCreated(lobby.getLobbyCode(), lobby);
     }
+
+	@Test
+	public void createLobby_withHostUsername_createsLobbyWithHost() {
+		// Given
+		String hostUsername = "a";
+		when(lobbyRepository.existsByLobbyCode(anyString())).thenReturn(false);
+		when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> {
+			Lobby saved = invocation.getArgument(0);
+			saved.setId(1L);
+			// Set ID on host player
+			if (saved.getPlayerList() != null && !saved.getPlayerList().isEmpty()) {
+				Player host = saved.getPlayerList().get(0);
+				host.setId(1L);
+				saved.setHostId(host.getId());
+			}
+			return saved;
+    	});
+
+		// When
+		Lobby lobby = lobbyService.createLobby(hostUsername);
+
+		// Then
+		assertNotNull(lobby);
+		assertNotNull(lobby.getLobbyCode());
+		assertEquals(6, lobby.getLobbyCode().length());
+		
+		assertNotNull(lobby.getPlayerList());
+		assertEquals(1, lobby.getPlayerList().size());
+		
+		Player host = lobby.getPlayerList().get(0);
+		assertEquals(hostUsername, host.getUsername());
+		assertTrue(host.isHost());
+		assertEquals(host.getId(), lobby.getHostId());
+		
+		verify(lobbyWebSocketHandler, times(1))
+			.broadcastLobbyCreated(lobby.getLobbyCode(), lobby);
+	}
+
+	@Test
+	public void createLobby_withNullHostUsername_throwsBadRequest() {
+		// When/Then
+		assertThrows(ResponseStatusException.class, () -> {
+			lobbyService.createLobby(null);
+		});
+	}
+
+	@Test
+	public void createLobby_withEmptyHostUsername_throwsBadRequest() {
+		// When/Then
+		assertThrows(ResponseStatusException.class, () -> {
+			lobbyService.createLobby("");
+		});
+	}
 
 	// Get Lobby
 	@Test

@@ -13,6 +13,7 @@ public class LobbyDTO {
     private LobbySettingsDTO settings;
     private LocalDateTime createdAt;
     private LobbyStatus lobbyStatus;
+    private String hostUsername;
 
     // Getters, Setters
     public Long getId() { return id; }
@@ -35,4 +36,7 @@ public class LobbyDTO {
 
     public LobbyStatus getLobbyStatus() { return lobbyStatus; }
     public void setLobbyStatus(LobbyStatus lobbyStatus) { this.lobbyStatus = lobbyStatus; }
+
+    public String getHostUsername() { return hostUsername; }
+    public void setHostUsername(String hostUsername) { this.hostUsername = hostUsername; }
 }
