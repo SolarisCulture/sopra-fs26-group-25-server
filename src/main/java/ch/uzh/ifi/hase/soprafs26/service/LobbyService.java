@@ -2,9 +2,11 @@ package ch.uzh.ifi.hase.soprafs26.service;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Random;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
@@ -18,6 +20,7 @@ import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 
 @Service
+@Transactional
 public class LobbyService {     
 
     private final LobbyRepository lobbyRepository;
@@ -53,6 +56,66 @@ public class LobbyService {
     public Lobby getLobbyByCode(String lobbyCode) {
         return lobbyRepository.findByLobbyCode(lobbyCode)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+    public void transferHost(String lobbyCode, Long currentHostId, Long newHostId) {
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        // Verify current player
+        if(!lobby.getHostId().equals(currentHostId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only host can transfer host role");
+        }
+
+        // Find new host
+        Player newHost = lobby.getPlayerById(newHostId);
+        if(newHost == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found in lobby");
+        }
+
+        // Find current host
+        Player currentHost = lobby.getPlayerById(currentHostId);
+        if(currentHost == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Current host not found in lobby");
+        }
+
+        currentHost.setHost(false);
+        newHost.setHost(true);
+        lobby.setHostId(newHostId);
+
+        lobbyRepository.save(lobby);
+
+        lobbyWebSocketHandler.broadcastHostChanged(lobbyCode, newHost);
+    }
+
+    public void leaveLobby(String lobbyCode, Long playerId) {
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        Player leavingPlayer = lobby.getPlayerById(playerId);
+        if(leavingPlayer == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found in lobby");
+        }
+
+        boolean isHost = leavingPlayer.isHost();
+
+        lobby.removePlayerById(playerId);
+
+        // Close lobby if empty
+        if(lobby.getPlayerList().isEmpty()) {
+            lobbyRepository.delete(lobby);
+            return;
+        }
+
+        if(isHost) {
+            assignNewHostRandomly(lobby);
+        }
+
+        lobbyRepository.save(lobby);
+
+        lobbyWebSocketHandler.broadcastPlayerLeft(lobbyCode, leavingPlayer);
+
+        // If host changed, broadcast host changed event
+        if(isHost && lobby.getHostId() != null) {
+            Player newHost = lobby.getPlayerById(lobby.getHostId());
+            lobbyWebSocketHandler.broadcastHostChanged(lobbyCode, newHost);
+        }
     }
 
     public void assignTeam(String lobbyCode, Long playerID, TeamColor team) {          
@@ -119,4 +182,16 @@ public class LobbyService {
         return code;
     }
 
+    private void assignNewHostRandomly(Lobby lobby) {
+        List<Player> players = lobby.getPlayerList();
+        if (players.isEmpty()) {
+            return;
+        }
+        
+        Random random = new Random();
+        Player newHost = players.get(random.nextInt(players.size()));
+        
+        newHost.setHost(true);
+        lobby.setHostId(newHost.getId());
+    }
 }

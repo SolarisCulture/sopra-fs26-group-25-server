@@ -14,10 +14,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
@@ -237,6 +239,155 @@ public class LobbyServiceTest {
 	// Get Lobby
 	@Test
     public void getLobbyByCode_validCode_returnsLobby() {
+	// Host Transfer
+	@Test
+    public void transferHost_validTransfer_success() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        
+        Player currentHost = new Player("a");
+        currentHost.setId(1L);
+        currentHost.setHost(true);
+        
+        Player newHost = new Player("b");
+        newHost.setId(2L);
+        newHost.setHost(false);
+        
+        lobby.addPlayer(currentHost);
+        lobby.addPlayer(newHost);
+        
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(lobby);
+        
+        // When
+        lobbyService.transferHost("ABC123", 1L, 2L);
+        
+        // Then
+        assertFalse(currentHost.isHost());
+        assertTrue(newHost.isHost());
+        assertEquals(2L, lobby.getHostId());
+        verify(lobbyWebSocketHandler).broadcastHostChanged("ABC123", newHost);
+    }
+
+	@Test
+    public void transferHost_nonHost_throwsForbidden() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        
+        Player nonHost = new Player("b");
+        nonHost.setId(2L);
+        nonHost.setHost(false);
+        lobby.addPlayer(nonHost);
+        
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        
+        // When/Then
+        assertThrows(ResponseStatusException.class, () -> {
+            lobbyService.transferHost("ABC123", 2L, 3L);
+        });
+    }
+
+	@Test
+    public void transferHost_playerNotFound_throwsNotFound() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        
+        Player currentHost = new Player("a");
+        currentHost.setId(1L);
+        currentHost.setHost(true);
+        lobby.addPlayer(currentHost);
+        
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        
+        // When/Then
+        assertThrows(ResponseStatusException.class, () -> {
+            lobbyService.transferHost("ABC123", 1L, 99L);
+        });
+    }
+
+	// Leave Lobby
+	@Test
+    public void leaveLobby_nonHost_playerRemoved() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        
+        Player host = new Player("a");
+        host.setId(1L);
+        host.setHost(true);
+        
+        Player player = new Player("b");
+        player.setId(2L);
+        player.setHost(false);
+        
+        lobby.addPlayer(host);
+        lobby.addPlayer(player);
+        
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(lobby);
+        
+        // When
+        lobbyService.leaveLobby("ABC123", 2L);
+        
+        // Then
+        assertEquals(1, lobby.getPlayerList().size());
+        assertTrue(lobby.getPlayerList().get(0).isHost());
+        verify(lobbyWebSocketHandler).broadcastPlayerLeft("ABC123", player);
+        verify(lobbyWebSocketHandler, never()).broadcastHostChanged(anyString(), any());
+    }
+
+	@Test
+    public void leaveLobby_host_assignsNewHostRandomly() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        
+        Player host = new Player("a");
+        host.setId(1L);
+        host.setHost(true);
+        
+        Player player1 = new Player("b");
+        player1.setId(2L);
+        player1.setHost(false);
+        
+        Player player2 = new Player("c");
+        player2.setId(3L);
+        player2.setHost(false);
+        
+        lobby.addPlayer(host);
+        lobby.addPlayer(player1);
+        lobby.addPlayer(player2);
+        
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(lobby);
+        
+        // When
+        lobbyService.leaveLobby("ABC123", 1L);
+        
+        // Then
+        assertEquals(2, lobby.getPlayerList().size());
+        boolean hasHost = lobby.getPlayerList().stream().anyMatch(Player::isHost);
+        assertTrue(hasHost);
+        assertNotNull(lobby.getHostId());
+        verify(lobbyWebSocketHandler).broadcastPlayerLeft("ABC123", host);
+        verify(lobbyWebSocketHandler).broadcastHostChanged(eq("ABC123"), any(Player.class));
+    }
+
+	@Test
+    public void leaveLobby_lastPlayer_deletesLobby() {
         // Given
         Lobby lobby = new Lobby();
         lobby.setId(1L);
@@ -269,6 +420,41 @@ public class LobbyServiceTest {
         // When/Then
         assertThrows(Exception.class, () -> {
             lobbyService.getLobbyByCode(null);
+        lobby.setHostId(1L);
+        
+        Player host = new Player("a");
+        host.setId(1L);
+        host.setHost(true);
+        lobby.addPlayer(host);
+        
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        
+        // When
+        lobbyService.leaveLobby("ABC123", 1L);
+        
+        // Then
+        verify(lobbyRepository).delete(lobby);
+        verify(lobbyWebSocketHandler, never()).broadcastHostChanged(anyString(), any());
+    }
+
+	@Test
+    public void leaveLobby_playerNotFound_throwsNotFound() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setId(1L);
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        
+        Player host = new Player("a");
+        host.setId(1L);
+        host.setHost(true);
+        lobby.addPlayer(host);
+        
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        
+        // When/Then
+        assertThrows(ResponseStatusException.class, () -> {
+            lobbyService.leaveLobby("ABC123", 99L);
         });
     }
 

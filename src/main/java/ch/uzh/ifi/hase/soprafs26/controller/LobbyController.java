@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs26.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -15,6 +16,7 @@ import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.LobbyDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.TransferHostRequest;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 
 @RestController
@@ -47,6 +49,26 @@ public class LobbyController {
 		}
         Lobby lobby = lobbyService.getLobbyByCode(lobbyCode);
         return DTOMapper.INSTANCE.convertEntityToLobbyDTO(lobby);
+	@PutMapping("/api/lobbies/{lobbyCode}/host/transfer")
+    @ResponseStatus(HttpStatus.OK)
+    public void transferHost(
+            @PathVariable String lobbyCode,
+            @RequestBody TransferHostRequest request) {
+        
+        if (request.getCurrentHostId() == null || request.getNewHostId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Host IDs are required");
+        }
+        
+        lobbyService.transferHost(lobbyCode, request.getCurrentHostId(), request.getNewHostId());
+    }
+
+	@DeleteMapping("/api/lobbies/{lobbyCode}/players/{playerId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void leaveLobby(
+            @PathVariable String lobbyCode,
+            @PathVariable Long playerId) {
+        
+        lobbyService.leaveLobby(lobbyCode, playerId);
     }
 
 	@PutMapping("/api/lobbies/{lobbyCode}/player/{playerId}/team") 
