@@ -18,6 +18,7 @@ import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 
 @Service
+@Transactional
 public class LobbyService {     
 
     private final LobbyRepository lobbyRepository;
