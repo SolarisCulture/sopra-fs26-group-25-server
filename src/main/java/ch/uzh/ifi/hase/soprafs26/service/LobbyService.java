@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Random;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -148,7 +147,7 @@ public class LobbyService {
         return false;
     }
 
-    public void joinLobby(String lobbyCode, String username) {
+    public Long joinLobby(String lobbyCode, String username) {
         // Check if lobby exists
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
 
@@ -163,6 +162,9 @@ public class LobbyService {
         // Add player
         Player player = new Player(username);
         lobby.addPlayer(player);
+
+        lobbyRepository.save(lobby);
+        return player.getId();
     }
 
     public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)
