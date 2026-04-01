@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willDoNothing;
+
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -133,7 +134,7 @@ public class LobbyControllerTest {
 	@Test
 	public void joinLobby_validInput_returnsOk() throws Exception {
 
-		willDoNothing().given(lobbyService).joinLobby(Mockito.any(), Mockito.any());
+		Mockito.when(lobbyService.joinLobby(Mockito.anyString(), Mockito.anyString())).thenReturn(1L);
 
 		MockHttpServletRequestBuilder postRequest = post("/api/lobbies/123/join")
 				.contentType(MediaType.APPLICATION_JSON)
