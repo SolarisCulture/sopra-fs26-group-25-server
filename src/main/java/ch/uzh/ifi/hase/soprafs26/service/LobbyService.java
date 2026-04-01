@@ -1,11 +1,14 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
 import java.util.List;
+import java.util.Random;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
@@ -14,10 +17,9 @@ import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
-import jakarta.transaction.Transactional;
 
 @Service
-@Transactional  // needed?
+@Transactional
 public class LobbyService {     
 
     private final LobbyRepository lobbyRepository;
@@ -28,15 +30,77 @@ public class LobbyService {
         this.lobbyWebSocketHandler = lobbyWebSocketHandler;
     }
 
-    public void assignTeam(String lobbyCode, Long playerID, TeamColor team) {          // lobbyCode or lobbyId --> Don't know if it matters much here
+    public void transferHost(String lobbyCode, Long currentHostId, Long newHostId) {
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        // Verify current player
+        if(!lobby.getHostId().equals(currentHostId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only host can transfer host role");
+        }
+
+        // Find new host
+        Player newHost = lobby.getPlayerById(newHostId);
+        if(newHost == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found in lobby");
+        }
+
+        // Find current host
+        Player currentHost = lobby.getPlayerById(currentHostId);
+        if(currentHost == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Current host not found in lobby");
+        }
+
+        currentHost.setHost(false);
+        newHost.setHost(true);
+        lobby.setHostId(newHostId);
+
+        lobbyRepository.save(lobby);
+
+        lobbyWebSocketHandler.broadcastHostChanged(lobbyCode, newHost);
+    }
+
+    public void leaveLobby(String lobbyCode, Long playerId) {
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        Player leavingPlayer = lobby.getPlayerById(playerId);
+        if(leavingPlayer == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found in lobby");
+        }
+
+        boolean isHost = leavingPlayer.isHost();
+
+        lobby.removePlayerById(playerId);
+
+        // Close lobby if empty
+        if(lobby.getPlayerList().isEmpty()) {
+            lobbyRepository.delete(lobby);
+            return;
+        }
+
+        if(isHost) {
+            assignNewHostRandomly(lobby);
+        }
+
+        lobbyRepository.save(lobby);
+
+        lobbyWebSocketHandler.broadcastPlayerLeft(lobbyCode, leavingPlayer);
+
+        // If host changed, broadcast host changed event
+        if(isHost && lobby.getHostId() != null) {
+            Player newHost = lobby.getPlayerById(lobby.getHostId());
+            lobbyWebSocketHandler.broadcastHostChanged(lobbyCode, newHost);
+        }
+    }
+
+    public void assignTeam(String lobbyCode, Long playerID, TeamColor team) {          
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
         Player player = lobby.getPlayerById(playerID);
 
         player.setTeam(team);
 
-        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      // remove if we send player
+        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      
         // Websocket --> broadcasts the update
-        lobbyWebSocketHandler.broadcastTeamUpdated(lobbyCode, playerDTO);              // player or playerDTO? --> playerDTO since the controller receives playerDTO as argument
+        lobbyWebSocketHandler.broadcastTeamUpdated(lobbyCode, playerDTO);            
     }
 
     public void assignRole(String lobbyCode, Long playerID, Role role){  
@@ -46,19 +110,18 @@ public class LobbyService {
         
         // Checks if there is already one Spymaster (only if the changed role is Spymaster)
         if (role == Role.SPYMASTER) {
-            Integer counter = 0;
-            for (Player playerFromList : playerList) {
-                if (playerFromList.getRole() == Role.SPYMASTER) {counter+=1;}
+            long existingSpymasterCount = playerList.stream()
+                .filter(p -> p.getRole() == Role.SPYMASTER && !p.getId().equals(playerID) && p.getTeam() == player.getTeam())
+                .count();
+            if (existingSpymasterCount > 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Team already has a spymaster");
             }
-            if (counter > 0) {throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "There are too many Spymasters!");}
-            else {player.setRole(Role.SPYMASTER);}
-        } else {
-            player.setRole(Role.SPY);
         }
+        player.setRole(role); // Sets the player's role to the new value
 
-        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      // Same as above
+        PlayerDTO playerDTO = DTOMapper.INSTANCE.convertEntityToPlayerDTO(player);      
         // Websocket --> broadcasts the update
-        lobbyWebSocketHandler.broadcastRoleUpdated(lobbyCode, playerDTO);              // Same as above
+        lobbyWebSocketHandler.broadcastRoleUpdated(lobbyCode, playerDTO);            
     }
 
     public boolean canStartGame(String lobbyCode) {
@@ -82,5 +145,47 @@ public class LobbyService {
         
         if (SpyCountBlue > 0 && SpymasterCountBlue == 1 && SpyCountRed > 0 && SpymasterCountRed == 1){return true;} // Check if all the roles have atleast one player (or exactly one)
         return false;
+    }
+
+    public Long joinLobby(String lobbyCode, String username) {
+        // Check if lobby exists
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        // Check username uniqueness
+        List<Player> playerList = lobby.getPlayerList();
+        boolean usernameExists = playerList.stream().anyMatch(p -> p.getUsername().equals(username));
+        if (usernameExists) {throw new ResponseStatusException(HttpStatus.CONFLICT, "The username is not unique!");}
+
+        // Check game state
+        if (!(lobby.getLobbyStatus() == LobbyStatus.WAITING)) {throw new ResponseStatusException(HttpStatus.FORBIDDEN, "The game is still running!");}  // Maybe a better HttpStatus?
+
+        // Add player
+        Player player = new Player(username);
+        lobby.addPlayer(player);
+
+        lobbyRepository.save(lobby);
+        return player.getId();
+    }
+
+    public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)
+        // Check if lobby exists
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        return lobby.getPlayerList();
+    }
+
+    // PlayerDisconnect comes in later part (waiting for merge into main branch/review since already halfway implemented by Timmy)
+    // Helper method
+    private void assignNewHostRandomly(Lobby lobby) {
+        List<Player> players = lobby.getPlayerList();
+        if (players.isEmpty()) {
+            return;
+        }
+        
+        Random random = new Random();
+        Player newHost = players.get(random.nextInt(players.size()));
+        
+        newHost.setHost(true);
+        lobby.setHostId(newHost.getId());
     }
 }

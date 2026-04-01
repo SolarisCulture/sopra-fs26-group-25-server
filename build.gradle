@@ -49,6 +49,12 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'   
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    //compileOnly 'org.projectlombok:lombok'
+    //annotationProcessor 'org.projectlombok:lombok'
+
+    //testCompileOnly("org.projectlombok:lombok:1.18.44")
+    //testAnnotationProcessor("org.projectlombok:lombok:1.18.44")
 }
 
 bootJar {
