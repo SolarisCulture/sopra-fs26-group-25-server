@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Random;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
@@ -146,6 +148,31 @@ public class LobbyService {
         return false;
     }
 
+    public void joinLobby(String lobbyCode, String username) {
+        // Check if lobby exists
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        // Check username uniqueness
+        List<Player> playerList = lobby.getPlayerList();
+        boolean usernameExists = playerList.stream().anyMatch(p -> p.getUsername().equals(username));
+        if (usernameExists) {throw new ResponseStatusException(HttpStatus.CONFLICT, "The username is not unique!");}
+
+        // Check game state
+        if (!(lobby.getLobbyStatus() == LobbyStatus.WAITING)) {throw new ResponseStatusException(HttpStatus.FORBIDDEN, "The game is still running!");}  // Maybe a better HttpStatus?
+
+        // Add player
+        Player player = new Player(username);
+        lobby.addPlayer(player);
+    }
+
+    public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)
+        // Check if lobby exists
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+
+        return lobby.getPlayerList();
+    }
+
+    // PlayerDisconnect comes in later part (waiting for merge into main branch/review since already halfway implemented by Timmy)
     // Helper method
     private void assignNewHostRandomly(Lobby lobby) {
         List<Player> players = lobby.getPlayerList();
