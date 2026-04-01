@@ -186,32 +186,4 @@ public class LobbyService {
         newHost.setHost(true);
         lobby.setHostId(newHost.getId());
     }
-
-    public void joinLobby(String lobbyCode, String username) {
-        // Check if lobby exists
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
-
-        // Check username uniqueness
-        List<Player> playerList = lobby.getPlayerList();
-        boolean usernameExists = playerList.stream().anyMatch(p -> p.getUsername().equals(username));
-        if (usernameExists) {throw new ResponseStatusException(HttpStatus.CONFLICT, "The username is not unique!");}
-
-        // Check game state
-        if (!(lobby.getLobbyStatus() == LobbyStatus.WAITING)) {throw new ResponseStatusException(HttpStatus.FORBIDDEN, "The game is still running!");}  // Maybe a better HttpStatus?
-
-        // Add player
-        Player player = new Player(username);
-        lobby.addPlayer(player);
-
-        lobbyRepository.save(lobby);
-    }
-
-    public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)
-        // Check if lobby exists
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
-
-        return lobby.getPlayerList();
-    }
-
-    // PlayerDisconnect comes in later part (waiting for merge into main branch/review since already halfway implemented by Timmy)
 }
