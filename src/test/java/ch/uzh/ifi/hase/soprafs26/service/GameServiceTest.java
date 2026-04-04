@@ -1,15 +1,10 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.CardType;
-import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
-import ch.uzh.ifi.hase.soprafs26.constant.Role;
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
-import ch.uzh.ifi.hase.soprafs26.entity.Board;
-import ch.uzh.ifi.hase.soprafs26.entity.Game;
-import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
-import ch.uzh.ifi.hase.soprafs26.entity.WordCard;
+import ch.uzh.ifi.hase.soprafs26.constant.*;
+import ch.uzh.ifi.hase.soprafs26.entity.*;
 import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
+import ch.uzh.ifi.hase.soprafs26.repository.TurnRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +37,9 @@ class GameServiceTest {
     @Mock
     private GameRepository gameRepository;
 
+    @Mock
+    private TurnRepository turnRepository;
+
     @InjectMocks
     private GameService gameService;
 
@@ -66,6 +64,11 @@ class GameServiceTest {
             g.setId(1L);  // simulate DB auto-generated ID
             return g;
         });
+        when(turnRepository.save(any(Turn.class))).thenAnswer(invocation -> {
+           Turn t = invocation.getArgument(0);
+           t.setId(1L);
+           return t;
+        });
 
         // Call the real method we're testing
         Game game = gameService.startGame("ABC123");
@@ -75,7 +78,8 @@ class GameServiceTest {
         assertNotNull(game.getBoard());
         assertEquals(25, game.getBoard().getCards().size());
         assertEquals(GameStatus.ACTIVE, game.getStatus());
-        assertEquals(TeamColor.RED, game.getCurrentTurn());
+        assertEquals(TeamColor.RED, game.getCurrentTurn().getCurrentTeamColor());
+        assertEquals(TurnPhase.SPYMASTER_TURN, game.getCurrentTurn().getPhase());
 
         // Verify board has correct card type distribution
         // `.stream().filter().count()` goes through all 25 cards and counts how many are each type
@@ -99,6 +103,7 @@ class GameServiceTest {
         // Verify save was called
         verify(lobbyRepository).save(any(Lobby.class));
         verify(gameRepository).save(any(Game.class));
+        verify(turnRepository).save(any(Turn.class));
     }
 
     @Test
@@ -133,7 +138,11 @@ class GameServiceTest {
         Game game = new Game();
         game.setId(1L);
         game.setStatus(GameStatus.ACTIVE);
-        game.setCurrentTurn(TeamColor.RED);
+        // New
+        Turn turn = new Turn();
+        turn.setCurrentTeamColor(TeamColor.RED);
+        turn.setPhase(TurnPhase.SPYMASTER_TURN);
+        game.setCurrentTurn(turn);
 
         Board board = new Board();
         WordCard card = new WordCard();
@@ -160,7 +169,11 @@ class GameServiceTest {
         Game game = new Game();
         game.setId(1L);
         game.setStatus(GameStatus.ACTIVE);
-        game.setCurrentTurn(TeamColor.RED);
+        // New
+        Turn turn = new Turn();
+        turn.setCurrentTeamColor(TeamColor.RED);
+        turn.setPhase(TurnPhase.SPYMASTER_TURN);
+        game.setCurrentTurn(turn);
 
         Board board = new Board();
         WordCard card = new WordCard();
@@ -188,7 +201,11 @@ class GameServiceTest {
         Game game = new Game();
         game.setId(1L);
         game.setStatus(GameStatus.ACTIVE);
-        game.setCurrentTurn(TeamColor.RED);
+        // New
+        Turn turn = new Turn();
+        turn.setCurrentTeamColor(TeamColor.RED);
+        turn.setPhase(TurnPhase.SPYMASTER_TURN);
+        game.setCurrentTurn(turn);
 
         Board board = new Board();
         WordCard card = new WordCard();
