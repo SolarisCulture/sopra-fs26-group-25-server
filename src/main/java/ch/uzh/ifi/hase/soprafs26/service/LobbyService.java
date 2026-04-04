@@ -24,6 +24,7 @@ public class LobbyService {
 
     private final LobbyRepository lobbyRepository;
     private final LobbyWebSocketHandler lobbyWebSocketHandler;
+    private static final String lobbyDoesNotExistString = "Lobby doesn't exist!";
 
     public LobbyService(LobbyRepository lobbyRepository, LobbyWebSocketHandler lobbyWebSocketHandler) {
         this.lobbyRepository = lobbyRepository;
@@ -31,7 +32,7 @@ public class LobbyService {
     }
 
     public void transferHost(String lobbyCode, Long currentHostId, Long newHostId) {
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
 
         // Verify current player
         if(!lobby.getHostId().equals(currentHostId)) {
@@ -60,7 +61,7 @@ public class LobbyService {
     }
 
     public void leaveLobby(String lobbyCode, Long playerId) {
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
 
         Player leavingPlayer = lobby.getPlayerById(playerId);
         if(leavingPlayer == null) {
@@ -93,7 +94,7 @@ public class LobbyService {
     }
 
     public void assignTeam(String lobbyCode, Long playerID, TeamColor team) {          
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
         Player player = lobby.getPlayerById(playerID);
 
         player.setTeam(team);
@@ -104,7 +105,7 @@ public class LobbyService {
     }
 
     public void assignRole(String lobbyCode, Long playerID, Role role){  
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
         List<Player> playerList = lobby.getPlayerList();
         Player player = lobby.getPlayerById(playerID);
         
@@ -125,7 +126,7 @@ public class LobbyService {
     }
 
     public boolean canStartGame(String lobbyCode) {
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
         List<Player> playerList = lobby.getPlayerList();
 
         Integer SpyCountBlue = 0;
@@ -149,7 +150,7 @@ public class LobbyService {
 
     public Long joinLobby(String lobbyCode, String username) {
         // Check if lobby exists
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
 
         // Check username uniqueness
         List<Player> playerList = lobby.getPlayerList();
@@ -169,7 +170,7 @@ public class LobbyService {
 
     public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)
         // Check if lobby exists
-        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
 
         return lobby.getPlayerList();
     }
