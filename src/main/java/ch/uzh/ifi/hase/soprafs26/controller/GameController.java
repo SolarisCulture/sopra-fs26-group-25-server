@@ -2,9 +2,12 @@ package ch.uzh.ifi.hase.soprafs26.controller;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
 import ch.uzh.ifi.hase.soprafs26.service.GameService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+
 
 
 @RestController
@@ -31,5 +34,21 @@ public class GameController {
         return gameService.getBoard(lobbyCode, role);
     }
 
-
+    @GetMapping("/api/games/{lobbyCode}/statistics")
+    @ResponseStatus(HttpStatus.OK)
+    public GameStatisticsDTO getGameStatistics(@PathVariable String lobbyCode) {
+        return gameService.getGameStatistics(lobbyCode);
+    }
+    
+    @PostMapping("/api/games/{lobbyCode}/restart")
+    public void restartGame(@PathVariable String lobbyCode) {
+        // Maybe add host check here
+        gameService.restartGame(lobbyCode);
+    }
+    
+    @PostMapping("/api/games/{lobbyCode}/backToLobby")
+    public void backToLobby(@PathVariable String lobbyCode) {
+        // Maybe add host check here
+        gameService.backToLobby(lobbyCode);
+    }
 }
