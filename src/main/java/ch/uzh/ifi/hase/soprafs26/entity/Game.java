@@ -5,6 +5,7 @@ import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 
 @Entity
@@ -22,13 +23,21 @@ public class Game {
     @JoinColumn(name = "board_id")
     private Board board;
 
+    @OneToMany(mappedBy = "game")
+    private List<Turn> turns;
+
+    // to know which turn is currently active
+    @OneToOne
+    @JoinColumn(name = "current_turn_id")
+    private Turn currentTurn;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private GameStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TeamColor currentTurn;
+    //@Enumerated(EnumType.STRING)
+    //@Column(nullable = false)
+    //private TeamColor team;
 
     private int currentRound;
     private int maxRounds;
@@ -65,11 +74,17 @@ public class Game {
     public Board getBoard() { return board; }
     public void setBoard(Board board) { this.board = board; }
 
+    public List<Turn> getTurns() { return turns; }
+    public void setTurns(List<Turn> turns) { this.turns = turns; }
+
+    public Turn getCurrentTurn() { return currentTurn; }
+    public void setCurrentTurn(Turn currentTurn) { this.currentTurn = currentTurn; }
+
     public GameStatus getStatus() { return status; }
     public void setStatus(GameStatus status) { this.status = status; }
 
-    public TeamColor getCurrentTurn() { return currentTurn; }
-    public void setCurrentTurn(TeamColor currentTurn) { this.currentTurn = currentTurn; }
+    //public TeamColor getTeam() { return team; }
+    //public void setTeam(TeamColor team) { this.team = team; }
 
     public int getCurrentRound() { return currentRound; }
     public void setCurrentRound(int currentRound) { this.currentRound = currentRound; }
