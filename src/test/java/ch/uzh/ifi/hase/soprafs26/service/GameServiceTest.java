@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs26.service;
 
 import ch.uzh.ifi.hase.soprafs26.constant.CardType;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
+import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Board;
@@ -11,13 +12,15 @@ import ch.uzh.ifi.hase.soprafs26.entity.WordCard;
 import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -25,6 +28,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +47,7 @@ class GameServiceTest {
     @Mock
     private GameRepository gameRepository;
 
+    @Spy
     @InjectMocks
     private GameService gameService;
 
@@ -208,5 +214,124 @@ class GameServiceTest {
 
         assertEquals(CardType.AGENTRED, dtoSpymaster.getCards().get(0).getCardType());
         assertEquals(CardType.AGENTRED, dtoSpy.getCards().get(0).getCardType());
+    }
+
+    @Test
+    public void calculateGameStatistics_validFinishedGame_setsStatisticsCorrectly() {
+        Game game = new Game();
+        game.setStatus(GameStatus.FINISHED);
+        game.setCurrentRound(5);
+        game.setBlueScore(8);   
+
+        testLobby.setGame(game);
+
+        when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+
+        gameService.calculateGameStatistics(testLobby.getLobbyCode());
+
+        assertEquals(5, game.getRoundsPlayed());
+        assertEquals(0, game.getTotalTime());
+        assertEquals(TeamColor.BLUE, game.getWinningTeam());
+    }
+
+    @Test
+    public void calculateGameStatistics_gameNotFinished_throwsException() {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        testLobby.setGame(game);
+
+        when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+
+        assertThrows(ResponseStatusException.class, () -> {gameService.calculateGameStatistics(testLobby.getLobbyCode());});
+    }
+
+    @Test
+    public void getGameStatistics_validFinishedGame_returnsDTO() {
+        Game game = new Game();
+        game.setStatus(GameStatus.FINISHED);
+        game.setBlueScore(5);
+        game.setRedScore(9);
+        game.setRoundsPlayed(7);
+        game.setTotalTime(100);
+        game.setWinningTeam(TeamColor.RED);
+
+        testLobby.setGame(game);
+
+        when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+
+        GameStatisticsDTO result = gameService.getGameStatistics(testLobby.getLobbyCode());
+
+        assertEquals(5, result.getBlueScore());
+        assertEquals(9, result.getRedScore());
+        assertEquals(7, result.getRoundsPlayed());
+        assertEquals(100, result.getTotalTime());
+        assertEquals(TeamColor.RED, result.getWinningTeam());
+    }
+
+    @Test
+    public void getGameStatistics_gameNotFinished_throwsException() {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        testLobby.setGame(game);
+
+        when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+
+        assertThrows(ResponseStatusException.class, () -> {gameService.getGameStatistics(testLobby.getLobbyCode());});
+    }
+
+    @Test
+    public void restartGame_validFinishedGame_callsStartGame() {
+        Game game = new Game();
+        game.setStatus(GameStatus.FINISHED);
+        testLobby.setGame(game);
+
+        when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+
+        Game newGame = new Game();
+
+        doReturn(newGame).when(gameService).startGame(Mockito.any());
+
+        Game result = gameService.restartGame(testLobby.getLobbyCode());
+
+        assertEquals(newGame, result);
+
+        verify(gameService, times(1)).startGame(testLobby.getLobbyCode());
+    }
+
+    @Test
+    public void restartGame_gameNotFinished_throwsException() {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        testLobby.setGame(game);
+
+        when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+
+        assertThrows(ResponseStatusException.class, () -> {gameService.restartGame(testLobby.getLobbyCode());});
+    }
+
+    @Test
+    public void backToLobby_validFinishedGame_updatesLobbyAndGame() {
+        Game game = new Game();
+        game.setStatus(GameStatus.FINISHED);
+        testLobby.setGame(game);
+
+        Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+
+        gameService.backToLobby(testLobby.getLobbyCode());
+
+        assertEquals(GameStatus.ARCHIVED, game.getStatus());
+        assertEquals(LobbyStatus.WAITING, testLobby.getLobbyStatus());
+        Mockito.verify(lobbyRepository, Mockito.times(1)).save(testLobby);
+    }
+
+    @Test
+    public void backToLobby_gameNotFinished_throwsException() {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        testLobby.setGame(game);
+
+        Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+
+        assertThrows(ResponseStatusException.class, () -> {gameService.backToLobby(testLobby.getLobbyCode());});
     }
 }

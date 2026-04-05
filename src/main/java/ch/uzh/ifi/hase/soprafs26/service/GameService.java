@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs26.service;
 
 import ch.uzh.ifi.hase.soprafs26.constant.CardType;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
+import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Board;
@@ -12,6 +13,7 @@ import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -114,6 +116,75 @@ public class GameService {
         return buildBoardDTO(game, role);
     }
 
+    public void calculateGameStatistics(String lobbyCode) {
+        Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
+
+        if (lobbyOptional.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
+        }
+        Game game = lobbyOptional.get().getGame();
+        if (game.getStatus() != GameStatus.FINISHED) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game is not finished yet!");}
+
+        game.setRoundsPlayed(game.getCurrentRound());
+        game.setTotalTime(0);               // Needs timer implementation --> Has to be implemented yet
+        if (game.getBlueScore() == 8) {game.setWinningTeam(TeamColor.BLUE);}        // Currently only checks if the max score is reached as a win condition --> Depends on how we implement the losing condition of hitting the black card (set other teams score to max?)
+        else {game.setWinningTeam(TeamColor.RED);}
+    }
+
+    public GameStatisticsDTO getGameStatistics(String lobbyCode) {
+        Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
+
+        if (lobbyOptional.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
+        }
+        Game game = lobbyOptional.get().getGame();
+        if (game.getStatus() != GameStatus.FINISHED) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game is not finished yet!");}
+
+        GameStatisticsDTO gameStatistics = new GameStatisticsDTO();
+        gameStatistics.setBlueScore(game.getBlueScore());
+        gameStatistics.setRedScore(game.getRedScore());
+        gameStatistics.setRoundsPlayed(game.getRoundsPlayed());
+        gameStatistics.setTotalTime(game.getTotalTime());
+        gameStatistics.setWinningTeam(game.getWinningTeam());
+
+        return gameStatistics;
+    }
+
+    public Game restartGame(String lobbyCode) {
+        Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
+
+        if (lobbyOptional.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
+        }
+        Lobby lobby = lobbyOptional.get();
+
+        // Maybe remove later/add check for .PAUSED for restarting game during pause
+        if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished!");
+        }
+
+        return startGame(lobbyCode);
+    }
+
+    public void backToLobby(String lobbyCode) {
+        Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
+
+        if (lobbyOptional.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
+        }
+        Lobby lobby = lobbyOptional.get();
+
+        // Maybe remove later/add check for .PAUSED for restarting game during pause
+        if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished!");
+        }
+
+        lobby.getGame().setStatus(GameStatus.ARCHIVED);
+        lobby.setLobbyStatus(LobbyStatus.WAITING);
+
+        lobbyRepository.save(lobby);
+        // Coming with next task: websocket things
+    }
 
     private GameBoardDTO buildBoardDTO(Game game, Role role) {
         // 1. Create CardDTO
