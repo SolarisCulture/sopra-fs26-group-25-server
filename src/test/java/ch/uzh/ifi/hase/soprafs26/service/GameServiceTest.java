@@ -51,6 +51,7 @@ class GameServiceTest {
         testLobby.setId(1L);
         testLobby.setLobbyCode("ABC123");
         testLobby.setHostId(1L);
+
     }
 
     @Test
@@ -138,6 +139,7 @@ class GameServiceTest {
         Game game = new Game();
         game.setId(1L);
         game.setStatus(GameStatus.ACTIVE);
+        game.setLobby(testLobby);
         // New
         Turn turn = new Turn();
         turn.setCurrentTeamColor(TeamColor.RED);
@@ -169,6 +171,7 @@ class GameServiceTest {
         Game game = new Game();
         game.setId(1L);
         game.setStatus(GameStatus.ACTIVE);
+        game.setLobby(testLobby);
         // New
         Turn turn = new Turn();
         turn.setCurrentTeamColor(TeamColor.RED);
@@ -201,6 +204,7 @@ class GameServiceTest {
         Game game = new Game();
         game.setId(1L);
         game.setStatus(GameStatus.ACTIVE);
+        game.setLobby(testLobby);
         // New
         Turn turn = new Turn();
         turn.setCurrentTeamColor(TeamColor.RED);
