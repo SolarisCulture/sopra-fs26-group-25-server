@@ -5,6 +5,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willDoNothing;
+
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -222,6 +223,28 @@ public class LobbyControllerTest {
                 .content(asJsonString(null));
 
 		mockMvc.perform(putRequest).andExpect(status().isBadRequest());
+	}
+
+	// joinLobby
+	@Test
+	public void joinLobby_validInput_returnsOk() throws Exception {
+
+		Mockito.when(lobbyService.joinLobby(Mockito.anyString(), Mockito.anyString())).thenReturn(1L);
+
+		MockHttpServletRequestBuilder postRequest = post("/api/lobbies/123/join")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(asJsonString("Aldin"));
+
+		mockMvc.perform(postRequest).andExpect(status().isOk());
+	}
+
+	@Test
+	public void joinLobby_invalidInput_returnsBadRequest() throws Exception {
+
+		MockHttpServletRequestBuilder postRequest = post("/api/lobbies/123/join")
+				.contentType(MediaType.APPLICATION_JSON);
+
+		mockMvc.perform(postRequest).andExpect(status().isBadRequest());
 	}
 
 
