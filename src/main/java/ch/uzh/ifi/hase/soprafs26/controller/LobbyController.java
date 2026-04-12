@@ -31,7 +31,6 @@ public class LobbyController {
 
 	@PostMapping("/api/lobbies")
     @ResponseStatus(HttpStatus.CREATED)
-    @ResponseBody
     public LobbyDTO createLobby(@RequestBody LobbyDTO request) {
 		if (request == null || request.getHostUsername() == null || request.getHostUsername().trim().isEmpty()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Host username is required");
@@ -43,7 +42,6 @@ public class LobbyController {
 
     @GetMapping("/api/lobbies/{lobbyCode}")
     @ResponseStatus(HttpStatus.OK)
-    @ResponseBody
     public LobbyDTO getLobby(@PathVariable String lobbyCode) {
 		if (lobbyCode == null || lobbyCode.trim().isEmpty()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lobby code cannot be empty");
