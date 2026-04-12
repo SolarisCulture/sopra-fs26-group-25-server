@@ -148,4 +148,5 @@ public class GameControllerTest {
 
         verify(gameService).backToLobby("ABC123");
     }
+    
 }
