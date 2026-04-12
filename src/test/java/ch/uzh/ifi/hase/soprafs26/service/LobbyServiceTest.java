@@ -14,12 +14,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.times;
 import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
@@ -236,9 +236,6 @@ public class LobbyServiceTest {
 		});
 	}
 
-	// Get Lobby
-	@Test
-    public void getLobbyByCode_validCode_returnsLobby() {
 	// Host Transfer
 	@Test
     public void transferHost_validTransfer_success() {
@@ -420,6 +417,8 @@ public class LobbyServiceTest {
         // When/Then
         assertThrows(Exception.class, () -> {
             lobbyService.getLobbyByCode(null);
+        });
+        Lobby lobby = new Lobby();
         lobby.setHostId(1L);
         
         Player host = new Player("a");

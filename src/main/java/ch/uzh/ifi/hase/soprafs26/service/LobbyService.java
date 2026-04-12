@@ -1,8 +1,8 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.Random;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ public class LobbyService {
     }
 
     public Lobby createLobby(String hostUsername) {
-        // Validation
+        // Validation in service since it could maybe be called from other sources such as tests, WebSocket
         if (hostUsername == null || hostUsername.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Host username is required");
         }
@@ -56,6 +56,8 @@ public class LobbyService {
     public Lobby getLobbyByCode(String lobbyCode) {
         return lobbyRepository.findByLobbyCode(lobbyCode)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
+    }
+
     public void transferHost(String lobbyCode, Long currentHostId, Long newHostId) {
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby doesn't exist!"));
 
