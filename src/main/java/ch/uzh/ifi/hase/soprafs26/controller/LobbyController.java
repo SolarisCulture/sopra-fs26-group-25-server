@@ -2,15 +2,20 @@ package ch.uzh.ifi.hase.soprafs26.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.LobbyDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.TransferHostRequest;
+import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 import org.springframework.web.bind.annotation.PostMapping;
 
@@ -18,12 +23,33 @@ import org.springframework.web.bind.annotation.PostMapping;
 @RestController
 public class LobbyController {
     
-    private LobbyService lobbyService;
+    private final LobbyService lobbyService;
 
     public LobbyController(LobbyService lobbyService) { 
 		this.lobbyService = lobbyService;
 	}
 
+	@PostMapping("/api/lobbies")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LobbyDTO createLobby(@RequestBody LobbyDTO request) {
+		if (request == null || request.getHostUsername() == null || request.getHostUsername().trim().isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Host username is required");
+		}
+		String hostUsername = request.getHostUsername();
+        Lobby lobby = lobbyService.createLobby(hostUsername);
+        return DTOMapper.INSTANCE.convertEntityToLobbyDTO(lobby);
+    }
+
+    @GetMapping("/api/lobbies/{lobbyCode}")
+    @ResponseStatus(HttpStatus.OK)
+    public LobbyDTO getLobby(@PathVariable String lobbyCode) {
+		if (lobbyCode == null || lobbyCode.trim().isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lobby code cannot be empty");
+		}
+        Lobby lobby = lobbyService.getLobbyByCode(lobbyCode);
+        return DTOMapper.INSTANCE.convertEntityToLobbyDTO(lobby);
+    }
+    
 	@PutMapping("/api/lobbies/{lobbyCode}/host/transfer")
     @ResponseStatus(HttpStatus.OK)
     public void transferHost(
