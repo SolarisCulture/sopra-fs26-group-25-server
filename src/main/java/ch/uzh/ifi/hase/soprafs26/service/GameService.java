@@ -123,6 +123,7 @@ public class GameService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
         }
         Game game = lobbyOptional.get().getGame();
+        if (game == null) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No game found for this lobby");}
         if (game.getStatus() != GameStatus.FINISHED) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game is not finished yet!");}
 
         game.setRoundsPlayed(game.getCurrentRound());
@@ -138,6 +139,7 @@ public class GameService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
         }
         Game game = lobbyOptional.get().getGame();
+        if (game == null) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No game found for this lobby");}
         if (game.getStatus() != GameStatus.FINISHED) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game is not finished yet!");}
 
         GameStatisticsDTO gameStatistics = new GameStatisticsDTO();
@@ -162,6 +164,8 @@ public class GameService {
         if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished!");
         }
+
+        // TODO: Broadcast the game restarted event to all players with GameWebSocketHandler before startGame(lobbyCode)
 
         return startGame(lobbyCode);
     }
