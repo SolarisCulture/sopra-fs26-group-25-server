@@ -41,11 +41,15 @@ public class Game {
 
     private int currentRound;
     private int maxRounds;
+    private int roundsPlayed;
+    private int totalTime;
 
     private int redScore;
     private int blueScore;
     private int redTotal;
     private int blueTotal;
+
+    private TeamColor winningTeam;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -88,6 +92,12 @@ public class Game {
     public int getMaxRounds() { return maxRounds; }
     public void setMaxRounds(int maxRounds) { this.maxRounds = maxRounds; }
 
+    public int getRoundsPlayed() { return roundsPlayed; }
+    public void setRoundsPlayed(int roundsPlayed) { this.roundsPlayed = roundsPlayed; }
+
+    public int getTotalTime() { return totalTime; }
+    public void setTotalTime(int totalTime) { this.totalTime = totalTime; }
+
     public int getRedScore() { return redScore; }
     public void setRedScore(int redScore) { this.redScore = redScore; }
 
@@ -99,6 +109,9 @@ public class Game {
 
     public int getBlueTotal() { return blueTotal; }
     public void setBlueTotal(int blueTotal) { this.blueTotal = blueTotal; }
+
+    public TeamColor getWinningTeam() { return winningTeam; }
+    public void setWinningTeam(TeamColor winningTeam) { this.winningTeam = winningTeam; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

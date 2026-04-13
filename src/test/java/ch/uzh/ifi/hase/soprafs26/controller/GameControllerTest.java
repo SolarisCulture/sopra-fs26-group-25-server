@@ -4,17 +4,22 @@ import ch.uzh.ifi.hase.soprafs26.constant.*;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
 import ch.uzh.ifi.hase.soprafs26.service.GameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 import static org.hamcrest.Matchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -112,6 +117,102 @@ public class GameControllerTest {
     public void getBoard_missingRoleParam_returns400() throws Exception {
         // Simulate the HTTP request without role parameter
         mockMvc.perform(get("/api/games/ABC123/board"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void getGameStatistics_validLobby_returns200AndDTO() throws Exception {
+        GameStatisticsDTO dto = new GameStatisticsDTO();
+        dto.setBlueScore(5);
+        dto.setRedScore(9);
+
+        given(gameService.getGameStatistics("ABC123")).willReturn(dto);
+
+        mockMvc.perform(get("/api/games/ABC123/statistics")).andExpect(status().isOk());
+
+        verify(gameService).getGameStatistics("ABC123");
+    }
+
+    @Test
+    public void getGameStatistics_lobbyNotFound_returns404() throws Exception {
+        // Given
+        given(gameService.getGameStatistics("INVALID"))
+            .willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found"));
+
+        // When/Then
+        mockMvc.perform(get("/api/games/INVALID/statistics"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void getGameStatistics_gameNotFinished_returns400() throws Exception {
+        // Given
+        given(gameService.getGameStatistics("123"))
+            .willThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game is not finished yet!"));
+
+        // When/Then
+        mockMvc.perform(get("/api/games/123/statistics"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void restartGame_validLobby_returns200() throws Exception {
+        Game game = new Game();
+        given(gameService.restartGame("ABC123")).willReturn(game);
+
+        mockMvc.perform(post("/api/games/ABC123/restart")).andExpect(status().isOk());
+
+        verify(gameService).restartGame("ABC123");
+    }
+
+    @Test
+    public void restartGame_lobbyNotFound_returns404() throws Exception {
+        // Given
+        given(gameService.restartGame("INVALID"))
+            .willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found"));
+
+        // When/Then
+        mockMvc.perform(post("/api/games/INVALID/restart"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void restartGame_gameNotFinished_returns400() throws Exception {
+        // Given
+        given(gameService.restartGame("123"))
+            .willThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game is not finished yet!"));
+
+        // When/Then
+        mockMvc.perform(post("/api/games/123/restart"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void backToLobby_validLobby_returns200() throws Exception {
+        willDoNothing().given(gameService).backToLobby("ABC123");
+
+        mockMvc.perform(post("/api/games/ABC123/backToLobby")).andExpect(status().isOk());
+
+        verify(gameService).backToLobby("ABC123");
+    }
+
+    @Test
+    public void backToLobby_lobbyNotFound_returns404() throws Exception {
+        // Given
+        willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found")).given(gameService).backToLobby("INVALID");
+
+        // When/Then
+        mockMvc.perform(post("/api/games/INVALID/backToLobby"))
+                .andExpect(status().isNotFound());
+    }
+    
+    @Test
+    public void backToLobby_gameNotFinished_returns400() throws Exception {
+        // Given
+        willThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game is not finished yet!")).given(gameService).backToLobby("123");
+
+        // When/Then
+        mockMvc.perform(post("/api/games/123/backToLobby"))
                 .andExpect(status().isBadRequest());
     }
 }
