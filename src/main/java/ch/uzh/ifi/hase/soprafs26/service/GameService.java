@@ -162,7 +162,7 @@ public class GameService {
 
         // Maybe remove later/add check for .PAUSED for restarting game during pause
         if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished!");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished yet!");
         }
 
         // TODO: Broadcast the game restarted event to all players with GameWebSocketHandler before startGame(lobbyCode)
@@ -180,7 +180,7 @@ public class GameService {
 
         // Maybe remove later/add check for .PAUSED for restarting game during pause
         if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished!");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished yet!");
         }
 
         lobby.getGame().setStatus(GameStatus.ARCHIVED);
