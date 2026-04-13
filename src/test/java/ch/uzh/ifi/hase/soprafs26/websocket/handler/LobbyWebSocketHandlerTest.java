@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
@@ -13,22 +14,40 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import org.mockito.MockitoAnnotations;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
+import ch.uzh.ifi.hase.soprafs26.websocket.listener.LobbyWebSocketListener;
 
 class LobbyWebSocketHandlerTest {
     
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private LobbyService lobbyService;
+
     @InjectMocks
     private LobbyWebSocketHandler lobbyWebSocketHandler;
+
+    @InjectMocks
+    private LobbyWebSocketListener lobbyWebSocketListener;
 
     @BeforeEach
     void setUp() {
@@ -336,6 +355,57 @@ class LobbyWebSocketHandlerTest {
         assertEquals(lobbyCode, event.getLobbyCode());
         assertEquals(playerDTO, event.getData());
         assertNotNull(event.getTimestamp());
+    }
+
+    // Connection Loss --> Player leaves
+    @Test
+    void handleWebSocketDisconnectListener_shouldCallLeaveLobby() {
+        // Given
+        String lobbyCode = "ABC123";
+        Long playerId = 1L;
+
+        Map<String, Object> sessionAttributes = new HashMap<>();
+        sessionAttributes.put("lobbyCode", lobbyCode);
+        sessionAttributes.put("playerId", playerId);
+
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.DISCONNECT);
+        accessor.setSessionAttributes(sessionAttributes);
+
+        // Simulates the message sent when dc happens
+        Message<byte[]> message = MessageBuilder.createMessage(
+            new byte[0],
+            accessor.getMessageHeaders()
+        );
+
+        SessionDisconnectEvent event = new SessionDisconnectEvent(this, message, "sessionId", CloseStatus.NORMAL);
+
+        // When
+        lobbyWebSocketListener.handleWebSocketDisconnectListener(event);
+
+        // Then
+        verify(lobbyService, times(1))
+            .leaveLobby(lobbyCode, playerId);
+    }
+
+    // No playerId + lobbyCode in message --> nothing happens
+    @Test
+    void handleWebSocketDisconnectListener_noSessionAttributes_shouldNotCallLeaveLobby() {
+        // Given
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.DISCONNECT);
+
+        Message<byte[]> message = MessageBuilder.createMessage(
+            new byte[0],
+            accessor.getMessageHeaders()
+        );
+
+        SessionDisconnectEvent event = new SessionDisconnectEvent(this, message, "sessionId", CloseStatus.NORMAL);
+
+        // When
+        lobbyWebSocketListener.handleWebSocketDisconnectListener(event);
+
+        // Then
+        verify(lobbyService, never())
+            .leaveLobby(anyString(), anyLong());
     }
 }
 
