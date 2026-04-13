@@ -86,12 +86,14 @@ public class TurnService {
         turn.getGuesses().add(guess);
         turn.setGuessesRemaining(turn.getGuessesRemaining()- 1 );
 
+
+
         // Check what was guessed
         // Now try writing this part yourself:
-        // - If ASSASSIN → game over, other team wins
-        // - If correct team color → update score, continue (unless guessesRemaining == 0)
-        // - If wrong team color → update that team's score, end turn
-        // - If CIVILIAN → end turn
+        // TODO - If ASSASSIN → game over, other team wins
+        // TODO  - If correct team color → update score, continue (unless guessesRemaining == 0)
+        // TODO  - If wrong team color → update that team's score, end turn
+        // TODO  - If CIVILIAN → end turn
 
         turnRepository.save(turn);
 

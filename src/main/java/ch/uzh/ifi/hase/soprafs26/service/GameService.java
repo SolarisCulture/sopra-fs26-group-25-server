@@ -106,6 +106,7 @@ public class GameService {
         lobbyRepository.save(lobby);
 
         // 9. Build both views and pass them to the handler
+        // TODO: optimize player list building
         GameBoardDTO spymasterBoard = buildBoardDTO(game, Role.SPYMASTER);
         GameBoardDTO operativeBoard = buildBoardDTO(game, Role.SPY);
         gameWebSocketHandler.broadcastGameStarted(lobbyCode, spymasterBoard, operativeBoard);
@@ -129,6 +130,15 @@ public class GameService {
 
 
     public GameBoardDTO buildBoardDTO(Game game, Role role) {
+        // validation
+        if(game.getLobby() == null) {
+            throw new IllegalStateException("Game not associated with a lobby");
+        }
+
+        if(game.getLobby().getPlayerList() == null) {
+            throw new IllegalStateException("Lobby has no player list");
+        }
+
         // 1. Create CardDTO
         List<CardDTO> cardDTOs = new ArrayList<>();
         List<CardType> keyCard = new ArrayList<>();
@@ -156,6 +166,7 @@ public class GameService {
         // Add team players
         List<PlayerDTO> redTeam = new ArrayList<>();
         List<PlayerDTO> blueTeam = new ArrayList<>();
+
         for (Player player : game.getLobby().getPlayerList()) {
             PlayerDTO dto = new PlayerDTO();
             dto.setId(player.getId());
