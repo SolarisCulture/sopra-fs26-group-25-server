@@ -158,7 +158,7 @@ public class LobbyService {
         if (usernameExists) {throw new ResponseStatusException(HttpStatus.CONFLICT, "The username is not unique!");}
 
         // Check game state
-        if (!(lobby.getLobbyStatus() == LobbyStatus.WAITING)) {throw new ResponseStatusException(HttpStatus.FORBIDDEN, "The game is still running!");}  // Maybe a better HttpStatus?
+        if (!(lobby.getLobbyStatus() == LobbyStatus.WAITING)) {throw new ResponseStatusException(HttpStatus.CONFLICT, "The game is still running!");} 
 
         // Add player
         Player player = new Player(username);
@@ -175,7 +175,6 @@ public class LobbyService {
         return lobby.getPlayerList();
     }
 
-    // PlayerDisconnect comes in later part (waiting for merge into main branch/review since already halfway implemented by Timmy)
     // Helper method
     private void assignNewHostRandomly(Lobby lobby) {
         List<Player> players = lobby.getPlayerList();

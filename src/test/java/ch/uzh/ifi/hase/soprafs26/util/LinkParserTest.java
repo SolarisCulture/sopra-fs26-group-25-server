@@ -40,4 +40,11 @@ class LinkParserTest {
         // Then
         assertNull(lobbyCode);
     }
+
+    @Test
+    void getLobbyCodeFromUrl_emptyCode_returnsNull() {
+        String url = "/join?code=";
+        String lobbyCode = LinkParser.getLobbyCodeFromUrl(url);
+        assertNull(lobbyCode);
+    }
 }

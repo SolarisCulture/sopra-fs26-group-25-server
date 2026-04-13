@@ -71,6 +71,8 @@ public class LobbyWebSocketHandler {
         accessor.getSessionAttributes().put("lobbyCode", lobbyCode);
         if (event.getData() instanceof PlayerDTO playerDTO) {
             accessor.getSessionAttributes().put("playerId", playerDTO.getId());
+        } else {
+            log.warn("Subscription event did not contain a PlayerDTO; cannot store playerId.", lobbyCode);
         }
 
         return event;

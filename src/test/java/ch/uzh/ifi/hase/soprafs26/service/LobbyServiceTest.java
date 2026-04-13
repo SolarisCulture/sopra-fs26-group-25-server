@@ -413,7 +413,7 @@ public class LobbyServiceTest {
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,() -> lobbyService.joinLobby("123", "E"));
 
-		assertEquals(403, exception.getStatusCode().value());
+		assertEquals(409, exception.getStatusCode().value());
 	}
 
 	// getPlayerList

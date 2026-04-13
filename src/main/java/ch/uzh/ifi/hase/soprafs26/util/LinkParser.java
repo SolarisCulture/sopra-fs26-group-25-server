@@ -13,7 +13,8 @@ public class LinkParser {
     // extract only code param
     public static String getLobbyCodeFromUrl(String url) {
         Map<String, String> params = parseQueryParams(url);
-        return params.get("code");
+        String code = params.get("code");
+        return (code == null || code.isBlank()) ? null : code;
     }
 
     // retreive the parameters from URL (helper function)
