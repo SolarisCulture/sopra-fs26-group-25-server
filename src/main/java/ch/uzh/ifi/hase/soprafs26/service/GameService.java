@@ -1,5 +1,16 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import ch.uzh.ifi.hase.soprafs26.constant.CardType;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
@@ -7,23 +18,17 @@ import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Board;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
+import ch.uzh.ifi.hase.soprafs26.entity.GameHistory;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.entity.WordCard;
+import ch.uzh.ifi.hase.soprafs26.repository.GameHistoryRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 
 @Service
 @Transactional
@@ -33,13 +38,18 @@ public class GameService {
     private final GameRepository gameRepository;
     private final WordService wordService;
     private final GameWebSocketHandler gameWebSocketHandler;
+    private final TurnRepository turnRepository; // TODO: import from a different PR
+    private final GameHistoryRepository gameHistoryRepository;
 
 
-    public GameService(LobbyRepository lobbyRepository, GameRepository gameRepository, WordService wordService, GameWebSocketHandler gameWebSocketHandler) {
+    public GameService(LobbyRepository lobbyRepository, GameRepository gameRepository, WordService wordService, GameWebSocketHandler gameWebSocketHandler, 
+                        TurnRepository turnRepository, GameHistoryRepository gameHistoryRepository) {
         this.lobbyRepository = lobbyRepository;
         this.gameRepository = gameRepository;
         this.wordService = wordService;
         this.gameWebSocketHandler = gameWebSocketHandler;
+        this.turnRepository = turnRepository;
+        this.gameHistoryRepository = gameHistoryRepository;
     }
 
 
@@ -188,6 +198,57 @@ public class GameService {
 
         lobbyRepository.save(lobby);
         // Coming with next task: websocket things
+    }
+
+    public void publishHint(String lobbyCode, Long spymasterId, String hint, int count) {
+        // Find lobby and game
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found"));
+        Game game = lobby.getGame();
+        if(game == null || game.getStatus() != GameStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No active game");
+        }
+
+        // Validate spymaster and turn
+        Player spymaster = lobby.getPlayerById(spymasterId);
+        if (spymaster == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not in lobby");
+        }
+        // TODO: Import Turn entity
+        Turn currentTurn = game.getCurrentTurn(); 
+        if(currentTurn == null || currentTurn.getPhase() != TurnPhase.SPYMASTER_TURN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not the spymaster's turn");
+        }
+        if(spymaster.getRole() != Role.SPYMASTER || spymaster.getTeam() != currentTurn.getCurrentTeamColor()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the current team's spymaster can give a hint");
+        }
+
+        // Validate hint and count
+        if(hint == null || hint.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hint cannot be empty");
+        }
+        if(count < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Count must be higher than 0");
+        }
+
+        // Update game state
+        game.setCurrentHint(hint);
+        game.setCurrentHintCount(count);
+        game.setRemainingGuesses(count + 1);
+
+        // Update turn
+        currentTurn.setPhase(TurnPhase.SPY_TURN);
+        currentTurn.setGuessesRemaining(count + 1);
+        currentTurn.setStartTime(LocalDateTime.now());
+        turnRepository.save(currentTurn);
+
+        // Store hint in history
+        GameHistory history = new GameHistory(game, currentTurn.getCurrentTeamColor(), hint, count);
+        gameHistoryRepository.save(history);
+        game.getGameHistories().add(history);
+        gameRepository.save(game);
+
+        // TODO: Broadcast event
     }
 
     private GameBoardDTO buildBoardDTO(Game game, Role role) {
