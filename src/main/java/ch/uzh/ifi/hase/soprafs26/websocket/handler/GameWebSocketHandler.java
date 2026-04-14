@@ -2,6 +2,7 @@ package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
+import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -36,5 +37,12 @@ public class GameWebSocketHandler {
                 "/topic/game/" + lobbyCode + "/spy",
                 new GameEvent("GAME_STARTED", lobbyCode, operativeBoard)
         );
+    }
+
+    public void broadcastClueGiven(String lobbyCode, String hint, int count, TeamColor team, Long spymasterId) {
+        log.info("Broadcasting CLUE_GIVEN for lobby: {}", lobbyCode);
+        GameEvent event = GameEvent.clueGiven(lobbyCode, hint, count, team, spymasterId);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", event);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", event);
     }
 }

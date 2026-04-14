@@ -248,7 +248,8 @@ public class GameService {
         game.getGameHistories().add(history);
         gameRepository.save(game);
 
-        // TODO: Broadcast event
+        // Broadcast event
+        gameWebSocketHandler.broadcastClueGiven(lobbyCode, hint, count, currentTurn.getCurrentTeamColor(), spymasterId);
     }
 
     private GameBoardDTO buildBoardDTO(Game game, Role role) {
