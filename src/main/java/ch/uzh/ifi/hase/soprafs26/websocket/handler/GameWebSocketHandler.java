@@ -4,13 +4,9 @@ import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.messaging.handler.annotation.DestinationVariable;
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
 
 
 @Controller
@@ -37,4 +33,25 @@ public class GameWebSocketHandler {
                 new GameEvent("GAME_STARTED", lobbyCode, operativeBoard)
         );
     }
+
+    public void broadcastGameRestarting(String lobbyCode, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
+        log.info("Broadcasting GAME_RESTARTING for lobby: {}", lobbyCode);
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spymaster",
+                GameEvent.gameRestarting(lobbyCode, spymasterBoard)
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spy",
+                GameEvent.gameRestarting(lobbyCode, operativeBoard)
+        );
+    }
+
+    public void broadcastReturningToLobby(String lobbyCode) {
+        log.info("Broadcasting RETURNING_TO_LOBBY for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode, GameEvent.returningToLobby(lobbyCode));
+    }
+
+    // Do we need to add a subscribe to /spy , /spymaster here or how are they subscribed?
 }

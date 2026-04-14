@@ -32,4 +32,12 @@ public class GameEvent {
     public static GameEvent gameStarted(String lobbyCode, GameBoardDTO board){
         return new GameEvent("GAME_STARTED", lobbyCode, board);
     }
+
+    public static GameEvent gameRestarting(String lobbyCode, GameBoardDTO board) {
+        return new GameEvent("GAME_RESTARTING", lobbyCode, board);
+    }
+
+    public static GameEvent returningToLobby(String lobbyCode) {
+        return new GameEvent("RETURNING_TO_LOBBY", lobbyCode);
+    }
 }

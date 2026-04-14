@@ -43,21 +43,7 @@ public class GameService {
     }
 
 
-    public Game startGame(String lobbyCode) {
-
-        // 1. Find the lobby
-        Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
-
-        if (lobbyOptional.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
-        }
-        Lobby lobby = lobbyOptional.get();
-
-        // 2. Check if game already running
-        if (lobby.getGame() != null && lobby.getGame().getStatus() == GameStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game already in progress");
-        }
-
+    private Game createNewGame(Lobby lobby) {
         // 3. Fetch 25 random words
         // for now short hardcoded list of words
         List<String> words = wordService.getWordsForGame();
@@ -93,6 +79,25 @@ public class GameService {
         game.setLobby(lobby);
 
         lobbyRepository.save(lobby);
+
+        return game;
+    }
+
+    public Game startGame(String lobbyCode) {
+        // Moved the game building to seperate function so it can be utilized for restarting the game
+        Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
+
+        if (lobbyOptional.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
+        }
+        Lobby lobby = lobbyOptional.get();
+
+        if (lobby.getGame() != null && lobby.getGame().getStatus() == GameStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game already in progress");
+        }
+
+        Game game = createNewGame(lobby);
+
 
         // 8. Build both views and pass them to the handler
         GameBoardDTO spymasterBoard = buildBoardDTO(game, Role.SPYMASTER);
@@ -165,9 +170,17 @@ public class GameService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished yet!");
         }
 
-        // TODO: Broadcast the game restarted event to all players with GameWebSocketHandler before startGame(lobbyCode)
+        lobby.getGame().setStatus(GameStatus.ARCHIVED);
+        gameRepository.save(lobby.getGame());
 
-        return startGame(lobbyCode);
+        Game game = createNewGame(lobby);
+
+        GameBoardDTO spymasterBoard = buildBoardDTO(game, Role.SPYMASTER);
+        GameBoardDTO operativeBoard = buildBoardDTO(game, Role.SPY);
+
+        gameWebSocketHandler.broadcastGameRestarting(lobbyCode, spymasterBoard, operativeBoard);
+
+        return game;
     }
 
     public void backToLobby(String lobbyCode) {
@@ -187,7 +200,9 @@ public class GameService {
         lobby.setLobbyStatus(LobbyStatus.WAITING);
 
         lobbyRepository.save(lobby);
-        // Coming with next task: websocket things
+        gameRepository.save(lobby.getGame());
+
+        gameWebSocketHandler.broadcastReturningToLobby(lobbyCode);
     }
 
     private GameBoardDTO buildBoardDTO(Game game, Role role) {
