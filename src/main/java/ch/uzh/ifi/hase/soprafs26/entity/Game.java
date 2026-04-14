@@ -1,10 +1,24 @@
 package ch.uzh.ifi.hase.soprafs26.entity;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
-import jakarta.persistence.*;
-
-import java.time.LocalDateTime;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 
 @Entity
@@ -45,6 +59,13 @@ public class Game {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    private String currentHint;
+    private Integer currentHintCount;
+    private int remainingGuesses;
+
+    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<GameHistory> gameHistories = new ArrayList<>();
+    
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -99,4 +120,16 @@ public class Game {
     public void setWinningTeam(TeamColor winningTeam) { this.winningTeam = winningTeam; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public String getCurrentHint() { return currentHint; }
+    public void setCurrentHint(String currentHint) { this.currentHint = currentHint; }
+
+    public Integer getCurrentHintCount() { return currentHintCount; }
+    public void setCurrentHintCount(Integer currentHintCount) { this.currentHintCount = currentHintCount; }
+
+    public int getRemainingGuesses() { return remainingGuesses; }
+    public void setRemainingGuesses(int remainingGuesses) { this.remainingGuesses = remainingGuesses; }
+
+    public List<GameHistory> getGameHistories() { return gameHistories; }
+    public void setGameHistories(List<GameHistory> gameHistories) { this.gameHistories = gameHistories; }
 }
