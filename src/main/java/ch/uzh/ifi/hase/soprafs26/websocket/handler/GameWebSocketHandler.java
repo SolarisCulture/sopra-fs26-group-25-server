@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 
+import ch.uzh.ifi.hase.soprafs26.constant.EventType;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
 import org.slf4j.Logger;
@@ -35,6 +36,21 @@ public class GameWebSocketHandler {
         messagingTemplate.convertAndSend(
                 "/topic/game/" + lobbyCode + "/spy",
                 new GameEvent("GAME_STARTED", lobbyCode, operativeBoard)
+        );
+    }
+
+    public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
+        log.info("Broadcasting CLUE_GIVEN for lobby: {}", lobbyCode);
+        String eventType = eventTypeE.toString();
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spymaster",
+                new GameEvent(eventType, lobbyCode, spymasterBoard)
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spy",
+                new GameEvent(eventType, lobbyCode, operativeBoard)
         );
     }
 }
