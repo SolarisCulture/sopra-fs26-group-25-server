@@ -63,6 +63,6 @@ public class GameController {
     @PostMapping("/api/games/{lobbyCode}/clue")
     @ResponseStatus(HttpStatus.OK)
     public void publishHint(@PathVariable String lobbyCode, @RequestBody PublishHintRequest request) {
-        gameService.publishHint(lobbyCode, request.getSpymasterId(), request.getHint(), request.getCount());
+        gameService.publishHint(lobbyCode, request.getSpymasterId(), request.getHint(), request.getCount()); // TODO: SpymasterID
     }
 }

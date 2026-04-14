@@ -227,8 +227,8 @@ public class GameService {
         if(hint == null || hint.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hint cannot be empty");
         }
-        if(count < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Count must be higher than 0");
+        if(count < 1 || count > 9) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Count must be between 1 and 9");
         }
 
         // Update game state
