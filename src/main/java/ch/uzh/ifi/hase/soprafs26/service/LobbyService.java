@@ -45,9 +45,11 @@ public class LobbyService {
         Player host = new Player(hostUsername);
         host.setHost(true);
         lobby.addPlayer(host);
-        lobby.setHostId(host.getId());
 
         Lobby savedLobby = lobbyRepository.save(lobby);
+        lobby.setHostId(host.getId());
+        lobbyRepository.save(savedLobby);
+        
         // Broadcast lobby created event
         lobbyWebSocketHandler.broadcastLobbyCreated(savedLobby.getLobbyCode(), savedLobby);
 
