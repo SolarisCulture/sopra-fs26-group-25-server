@@ -42,6 +42,11 @@ public class GameWebSocketHandler {
                 "/topic/game/" + lobbyCode + "/spymaster",
                 GameEvent.gameRestarting(lobbyCode, spymasterBoard)
             );
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spy",
+                GameEvent.gameRestarting(lobbyCode, operativeBoard)
+            );
     }
     
     public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
@@ -64,5 +69,4 @@ public class GameWebSocketHandler {
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode, GameEvent.returningToLobby(lobbyCode));
     }
 
-    // Do we need to add a subscribe to /spy , /spymaster here or how are they subscribed?
 }

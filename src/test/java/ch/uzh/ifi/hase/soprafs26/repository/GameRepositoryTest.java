@@ -17,6 +17,7 @@ import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.entity.Turn;
 
 @DataJpaTest
 public class GameRepositoryTest {
@@ -39,7 +40,10 @@ public class GameRepositoryTest {
         testLobby.setLobbyStatus(LobbyStatus.WAITING);
 
         game = new Game();
-        game.setCurrentTurn(TeamColor.BLUE);
+        Turn turn = new Turn();
+        turn.setGame(game);
+        entityManager.persist(turn);
+        game.setCurrentTurn(turn);
 
         game.setLobby(testLobby);
         testLobby.setGame(game);
@@ -74,7 +78,12 @@ public class GameRepositoryTest {
 
         game.setLobby(testLobby);
         testLobby.setGame(game);
-        game.setCurrentTurn(TeamColor.BLUE);
+
+        Turn turn = new Turn();
+        turn.setGame(game);
+        entityManager.persist(turn);
+        game.setCurrentTurn(turn);
+
 
         entityManager.persist(testLobby);
         entityManager.flush();
