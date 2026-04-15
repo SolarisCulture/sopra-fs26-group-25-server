@@ -29,4 +29,12 @@ public class Board {
 
     public List<WordCard> getCards() { return cards; }
     public void setCards(List<WordCard> cards) { this.cards = cards; }
+
+    // To be able to search for card by word
+    public WordCard findCardByWord(String word) {
+        return cards.stream()
+                .filter(card -> card.getWord().equalsIgnoreCase(word))
+                .findFirst()
+                .orElse(null);
+    }
 }

@@ -40,4 +40,16 @@ public class GameEvent {
     public static GameEvent returningToLobby(String lobbyCode) {
         return new GameEvent("RETURNING_TO_LOBBY", lobbyCode);
     }
+    public static GameEvent clueGiven(String lobbyCode, GameBoardDTO board){
+        return new GameEvent("CLUE_GIVEN", lobbyCode, board);
+    }
+
+    public static GameEvent guessGiven(String lobbyCode, GameBoardDTO board){
+        return new GameEvent("CARD_REVEALED", lobbyCode, board);
+    }
+
+    public static GameEvent turnChanged(String lobbyCode, GameBoardDTO board){
+        return new GameEvent("TURN_CHANGED", lobbyCode, board);
+    }
+
 }
