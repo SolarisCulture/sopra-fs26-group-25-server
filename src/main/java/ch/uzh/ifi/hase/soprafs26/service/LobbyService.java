@@ -46,9 +46,19 @@ public class LobbyService {
         host.setHost(true);
         lobby.addPlayer(host);
 
+        // dummy ID --> avoid NullException
+        lobby.setHostId(-1L);
+
         Lobby savedLobby = lobbyRepository.save(lobby);
-        lobby.setHostId(host.getId());
-        lobbyRepository.save(savedLobby);
+        
+        Player persistedHost = savedLobby.getPlayerList().stream()
+                .filter(Player::isHost)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Host player not found"));
+
+        savedLobby.setHostId(persistedHost.getId());
+
+        savedLobby = lobbyRepository.save(savedLobby);
         
         // Broadcast lobby created event
         lobbyWebSocketHandler.broadcastLobbyCreated(savedLobby.getLobbyCode(), savedLobby);
