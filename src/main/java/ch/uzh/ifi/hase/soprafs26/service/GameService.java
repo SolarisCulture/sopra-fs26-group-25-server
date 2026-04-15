@@ -59,7 +59,8 @@ public class GameService {
 
         // 3. Fetch 25 random words
         // for now short hardcoded list of words
-        List<String> words = wordService.getWordsForGame();
+        Difficulty difficulty =  lobby.getSettings().getDifficulty();
+        List<String> words = wordService.getWordsForGame(difficulty);
 
         // 4.Generate card type distribution (the "key card")
         // Pick starting team randomly
@@ -171,7 +172,8 @@ public class GameService {
         game.setBlueTotal(startingTeam == TeamColor.BLUE ? 9 : 8);
 
         // New words and card types
-        List<String> words = wordService.getWordsForGame();
+        Difficulty difficulty =  lobby.getSettings().getDifficulty();
+        List<String> words = wordService.getWordsForGame(difficulty);
         List<CardType> types = generateCardTypes(startingTeam);
 
         List<WordCard> cards = game.getBoard().getCards();

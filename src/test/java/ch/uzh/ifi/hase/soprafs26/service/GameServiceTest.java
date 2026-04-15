@@ -66,7 +66,7 @@ class GameServiceTest {
     public void startGame_validLobby_createsGameWith25Cards() {
         // Tell the mocks what to return
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
-        when(wordService.getWordsForGame()).thenCallRealMethod();  // use real word list
+        when(wordService.getWordsForGame(testLobby.getSettings().getDifficulty())).thenCallRealMethod();  // use real word list
         when(lobbyRepository.save(any(Lobby.class))).thenReturn(testLobby);
         when(gameRepository.save(any(Game.class))).thenAnswer(invocation -> {
             Game g = invocation.getArgument(0);
@@ -396,7 +396,7 @@ class GameServiceTest {
         for (int i = 0; i < 25; i++) {
             testWords.add("NEWWORD" + i);
         }
-        when(wordService.getWordsForGame()).thenReturn(testWords);
+        when(wordService.getWordsForGame(testLobby.getSettings().getDifficulty())).thenReturn(testWords);
 
         gameService.regenerateBoard("ABC123", 1L);
 
