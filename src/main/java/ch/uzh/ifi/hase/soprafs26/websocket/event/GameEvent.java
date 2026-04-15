@@ -50,12 +50,16 @@ public class GameEvent {
         return new GameEvent("GAME_STARTED", lobbyCode, board);
     }
 
-    public static GameEvent clueGiven(String lobbyCode, String hint, int count, TeamColor team, Long spymasterId) {
-        GameEvent event = new GameEvent("CLUE_GIVEN", lobbyCode);
-        event.setHint(hint);
-        event.setCount(count);
-        event.setTeam(team);
-        event.setSpymasterId(spymasterId);
-        return event;
+    public static GameEvent clueGiven(String lobbyCode, GameBoardDTO board){
+        return new GameEvent("CLUE_GIVEN", lobbyCode, board);
     }
+
+    public static GameEvent guessGiven(String lobbyCode, GameBoardDTO board){
+        return new GameEvent("CARD_REVEALED", lobbyCode, board);
+    }
+
+    public static GameEvent turnChanged(String lobbyCode, GameBoardDTO board){
+        return new GameEvent("TURN_CHANGED", lobbyCode, board);
+    }
+
 }

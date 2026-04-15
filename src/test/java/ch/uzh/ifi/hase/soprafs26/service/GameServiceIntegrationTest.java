@@ -46,7 +46,13 @@ public class GameServiceIntegrationTest {
         assertNotNull(game);
         assertNotNull(game.getId());
         assertEquals(GameStatus.ACTIVE, game.getStatus());
-        assertEquals(TeamColor.RED, game.getCurrentTurn());
+        assertEquals(TeamColor.RED, game.getCurrentTurn().getCurrentTeamColor());
+
+        // Check that the first turn was created correctly
+        assertNotNull(game.getCurrentTurn());
+        assertEquals(TurnPhase.SPYMASTER_TURN, game.getCurrentTurn().getPhase());
+        assertEquals(0, game.getCurrentTurn().getGuessesRemaining());
+        assertNotNull(game.getCurrentTurn().getStartTime());
 
         // Check that board has 25 cards
         assertNotNull(game.getBoard());

@@ -1,17 +1,13 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 
-import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
-import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.messaging.handler.annotation.DestinationVariable;
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
+import ch.uzh.ifi.hase.soprafs26.constant.EventType;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
 
 
 @Controller
@@ -39,10 +35,18 @@ public class GameWebSocketHandler {
         );
     }
 
-    public void broadcastClueGiven(String lobbyCode, String hint, int count, TeamColor team, Long spymasterId) {
+    public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
         log.info("Broadcasting CLUE_GIVEN for lobby: {}", lobbyCode);
-        GameEvent event = GameEvent.clueGiven(lobbyCode, hint, count, team, spymasterId);
-        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", event);
-        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", event);
+        String eventType = eventTypeE.toString();
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spymaster",
+                new GameEvent(eventType, lobbyCode, spymasterBoard)
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spy",
+                new GameEvent(eventType, lobbyCode, operativeBoard)
+        );
     }
 }

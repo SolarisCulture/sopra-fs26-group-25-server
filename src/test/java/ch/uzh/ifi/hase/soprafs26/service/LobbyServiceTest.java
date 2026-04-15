@@ -122,7 +122,7 @@ public class LobbyServiceTest {
         assertNotNull(lobby);
         assertNotNull(lobby.getLobbyCode());
         assertEquals(6, lobby.getLobbyCode().length());
-        verify(lobbyRepository, times(1)).save(any(Lobby.class));
+        verify(lobbyRepository, times(2)).save(any(Lobby.class));
     }
 
 	@Test
@@ -145,7 +145,7 @@ public class LobbyServiceTest {
         assertNotNull(lobby);
         assertNotNull(lobby.getLobbyCode());
         verify(lobbyRepository, times(2)).existsByLobbyCode(anyString());
-        verify(lobbyRepository, times(1)).save(any(Lobby.class));
+        verify(lobbyRepository, times(2)).save(any(Lobby.class));
     }
 
 	@Test
