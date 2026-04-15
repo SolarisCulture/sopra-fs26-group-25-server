@@ -26,21 +26,12 @@ public class GameWebSocketHandler {
     }
 
     public void broadcastGameStarted(String lobbyCode, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
-        log.info("Broadcasting GAME_STARTED for lobby: {}", lobbyCode);
-
-        messagingTemplate.convertAndSend(
-                "/topic/game/" + lobbyCode + "/spymaster",
-                new GameEvent("GAME_STARTED", lobbyCode, spymasterBoard)
-        );
-
-        messagingTemplate.convertAndSend(
-                "/topic/game/" + lobbyCode + "/spy",
-                new GameEvent("GAME_STARTED", lobbyCode, operativeBoard)
-        );
+        broadcastGameState(lobbyCode, EventType.GAME_STARTED, spymasterBoard, operativeBoard);
     }
 
     public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
-        log.info("Broadcasting CLUE_GIVEN for lobby: {}", lobbyCode);
+        log.info("Broadcasting {} for lobby: {}", eventTypeE, lobbyCode);
+
         String eventType = eventTypeE.toString();
 
         messagingTemplate.convertAndSend(
@@ -53,4 +44,5 @@ public class GameWebSocketHandler {
                 new GameEvent(eventType, lobbyCode, operativeBoard)
         );
     }
+
 }

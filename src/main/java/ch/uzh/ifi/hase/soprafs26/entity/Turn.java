@@ -25,10 +25,11 @@ public class Turn {
     private int guessesRemaining;
     private LocalDateTime startTime;
 
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL)
     private Clue clue;
 
-    @OneToMany
+    @OneToMany(cascade = CascadeType.ALL)
+    @JoinColumn(name = "turn_id")
     private List<Guess> guesses;
 
     public Long getId() { return id; }

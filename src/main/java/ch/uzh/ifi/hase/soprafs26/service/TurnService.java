@@ -1,9 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.EventType;
-import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
-import ch.uzh.ifi.hase.soprafs26.constant.Role;
-import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
+import ch.uzh.ifi.hase.soprafs26.constant.*;
 import ch.uzh.ifi.hase.soprafs26.entity.*;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.TurnRepository;
@@ -17,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Optional;
 
 @Service
@@ -26,7 +24,6 @@ public class TurnService {
     private final GameService gameService;
     private final GameWebSocketHandler gameWebSocketHandler;
     private final TurnRepository turnRepository;
-
 
     public TurnService(LobbyRepository lobbyRepository, GameService gameService, GameWebSocketHandler gameWebSocketHandler, TurnRepository turnRepository) {
         this.lobbyRepository = lobbyRepository;
@@ -68,7 +65,6 @@ public class TurnService {
         Game game = getActiveGame(lobbyCode);
         Turn turn = getCurrentTurn(game, TurnPhase.SPY_TURN);
 
-
         // Find the card
         WordCard wordCard = game.getBoard().findCardByWord(guessDTO.getWord());
         if (wordCard == null) {
@@ -84,26 +80,90 @@ public class TurnService {
         Guess guess = new Guess();
         guess.setWordCard(wordCard);
         turn.getGuesses().add(guess);
-        turn.setGuessesRemaining(turn.getGuessesRemaining()- 1 );
+        turn.setGuessesRemaining(turn.getGuessesRemaining()- 1);
 
+        TeamColor team = turn.getCurrentTeamColor();
+        CardType cardType = wordCard.getCardType();
 
+        boolean turnEnded = false;
 
-        // Check what was guessed
-        // Now try writing this part yourself:
-        // TODO - If ASSASSIN → game over, other team wins
-        // TODO  - If correct team color → update score, continue (unless guessesRemaining == 0)
-        // TODO  - If wrong team color → update that team's score, end turn
-        // TODO  - If CIVILIAN → end turn
+        if (cardType == CardType.ASSASSIN) {
+            // Other team wins
+            TeamColor winner = (team == TeamColor.RED) ? TeamColor.BLUE : TeamColor.RED;
+            game.setWinningTeam(winner);
+            game.setStatus(GameStatus.FINISHED);
+        } else if (cardType == CardType.CIVILIAN) {
+            turnEnded = true;
+        } else if ((cardType == CardType.AGENTRED && team == TeamColor.RED) ||
+                (cardType == CardType.AGENTBLUE && team == TeamColor.BLUE)) {
+            // Correct guess
+            if (cardType == CardType.AGENTRED) {
+                game.setRedScore(game.getRedScore() + 1);
+                if (game.getRedTotal() == game.getRedScore()) {
+                    game.setWinningTeam(TeamColor.RED);
+                    game.setStatus(GameStatus.FINISHED);
+                }
+            } else {
+                game.setBlueScore(game.getBlueScore() + 1);
+                if (game.getBlueScore() == game.getBlueTotal()) {
+                    game.setWinningTeam(TeamColor.BLUE);
+                    game.setStatus(GameStatus.FINISHED);
+                }
+            }
+
+            if (turn.getGuessesRemaining() == 0) {
+                turnEnded = true;
+            }
+
+        } else {
+            // Wrong team's card — give them the point, end turn
+            if (cardType == CardType.AGENTRED) {
+                game.setRedScore(game.getRedScore() + 1);
+            } else {
+                game.setBlueScore(game.getBlueScore() + 1);
+            }
+            turnEnded = true;
+        }
+
+        if (turnEnded && game.getStatus() != GameStatus.FINISHED) {
+            endTurn(lobbyCode);
+            return;
+        }
 
         turnRepository.save(turn);
 
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
         GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
-        gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CLUE_GIVEN, spymasterView, spyView);
+        EventType eventType = game.getStatus() == GameStatus.FINISHED ? EventType.GAME_OVER : EventType.CARD_REVEALED;
+        gameWebSocketHandler.broadcastGameState(lobbyCode, eventType, spymasterView, spyView);
     }
 
     public void endTurn(String lobbyCode) {
+        Game game = getActiveGame(lobbyCode);
+        Turn currentTurn = game.getCurrentTurn();
+
+        // Figure out the other team
+        TeamColor nextTeam = (currentTurn.getCurrentTeamColor() == TeamColor.RED) ? TeamColor.BLUE : TeamColor.RED;
+
+        // Create a new Turn for that team
+        Turn nextTurn = new Turn();
+        nextTurn.setGame(game);
+        nextTurn.setCurrentTeamColor(nextTeam);
+        nextTurn.setPhase(TurnPhase.SPYMASTER_TURN);
+        nextTurn.setGuesses(new ArrayList<>());
+        nextTurn.setGuessesRemaining(0);
+        nextTurn.setStartTime(LocalDateTime.now());
+
+        // Set it as the current turn on the game
+        turnRepository.save(nextTurn);
+        game.getTurns().add(nextTurn);
+        game.setCurrentTurn(nextTurn);
+
+        // Save and broadcast
+        GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+        GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+        gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.TURN_CHANGED, spymasterView, spyView);
 
     }
 
@@ -136,4 +196,6 @@ public class TurnService {
         }
         return turn;
     }
+
+
 }

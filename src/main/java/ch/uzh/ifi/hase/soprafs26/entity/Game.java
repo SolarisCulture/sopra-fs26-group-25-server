@@ -23,6 +23,9 @@ public class Game {
     @JoinColumn(name = "board_id")
     private Board board;
 
+    @Enumerated(EnumType.STRING)
+    private TeamColor startingTeam;
+
     @OneToMany(mappedBy = "game")
     private List<Turn> turns;
 
@@ -61,8 +64,6 @@ public class Game {
         this.currentRound = 1;
         this.redScore = 0;
         this.blueScore = 0;
-        this.redTotal = 9;
-        this.blueTotal = 8;
     }
 
     public Long getId() { return id; }
@@ -73,6 +74,9 @@ public class Game {
 
     public Board getBoard() { return board; }
     public void setBoard(Board board) { this.board = board; }
+
+    public TeamColor getStartingTeam() { return startingTeam; }
+    public void setStartingTeam(TeamColor startingTeam) { this.startingTeam = startingTeam; }
 
     public List<Turn> getTurns() { return turns; }
     public void setTurns(List<Turn> turns) { this.turns = turns; }

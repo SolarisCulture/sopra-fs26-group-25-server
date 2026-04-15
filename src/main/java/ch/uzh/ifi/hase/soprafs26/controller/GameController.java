@@ -51,4 +51,10 @@ public class GameController {
         // Maybe add host check here
         gameService.backToLobby(lobbyCode);
     }
+
+    @PostMapping("/api/games/{lobbyCode}/regenerate")
+    @ResponseStatus(HttpStatus.OK)
+    public void regenerateBoard(@PathVariable String lobbyCode, @RequestParam Long spymasterId ) {
+        gameService.regenerateBoard(lobbyCode, spymasterId);
+    }
 }

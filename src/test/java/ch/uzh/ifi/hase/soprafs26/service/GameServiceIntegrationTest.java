@@ -3,12 +3,15 @@ package ch.uzh.ifi.hase.soprafs26.service;
 import ch.uzh.ifi.hase.soprafs26.constant.*;
 import ch.uzh.ifi.hase.soprafs26.entity.*;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,6 +25,9 @@ public class GameServiceIntegrationTest {
 
     @Autowired
     private LobbyRepository lobbyRepository;
+
+    @Autowired
+    private TurnService turnService;
 
     private Lobby testLobby;
 
@@ -46,10 +52,10 @@ public class GameServiceIntegrationTest {
         assertNotNull(game);
         assertNotNull(game.getId());
         assertEquals(GameStatus.ACTIVE, game.getStatus());
-        assertEquals(TeamColor.RED, game.getCurrentTurn().getCurrentTeamColor());
+        assertNotNull(game.getStartingTeam());
+        assertEquals(game.getStartingTeam(), game.getCurrentTurn().getCurrentTeamColor());
 
         // Check that the first turn was created correctly
-        assertNotNull(game.getCurrentTurn());
         assertEquals(TurnPhase.SPYMASTER_TURN, game.getCurrentTurn().getPhase());
         assertEquals(0, game.getCurrentTurn().getGuessesRemaining());
         assertNotNull(game.getCurrentTurn().getStartTime());
@@ -60,6 +66,7 @@ public class GameServiceIntegrationTest {
         assertEquals(25, game.getBoard().getCards().size());
 
         // Assert — correct card type distribution
+        TeamColor startingTeam = game.getStartingTeam();
         long redCount = game.getBoard().getCards().stream()
                 .filter(c -> c.getCardType() == CardType.AGENTRED).count();
         long blueCount = game.getBoard().getCards().stream()
@@ -69,8 +76,13 @@ public class GameServiceIntegrationTest {
         long assassinCount = game.getBoard().getCards().stream()
                 .filter(c -> c.getCardType() == CardType.ASSASSIN).count();
 
-        assertEquals(9, redCount);
-        assertEquals(8, blueCount);
+        if (startingTeam == TeamColor.RED) {
+            assertEquals(9, redCount);
+            assertEquals(8, blueCount);
+        } else {
+            assertEquals(8, redCount);
+            assertEquals(9, blueCount);
+        }
         assertEquals(7, civilianCount);
         assertEquals(1, assassinCount);
 
@@ -107,5 +119,54 @@ public class GameServiceIntegrationTest {
                 });
         // Assertion
         assertEquals(404, exception.getStatusCode().value());
+    }
+
+    @Test
+    @Transactional
+    public void fullTurnCycle_clueAndGuess_worksEndToEnd() {
+        // Start game
+        Game game = gameService.startGame(testLobby.getLobbyCode());
+
+        // Spymaster gives clue
+        ClueDTO clue = new ClueDTO();
+        clue.setWord("animal");
+        clue.setCount(2);
+        turnService.submitClue(testLobby.getLobbyCode(), clue);
+
+        // Verify phase changed
+        assertEquals(TurnPhase.SPY_TURN, game.getCurrentTurn().getPhase());
+
+        // Spy makes a correct guess
+        String firstWord = game.getBoard().getCards().stream()
+                .filter(c -> c.getCardType() == (game.getStartingTeam() == TeamColor.RED
+                        ? CardType.AGENTRED : CardType.AGENTBLUE))
+                .findFirst().get().getWord();
+
+        turnService.submitGuess(testLobby.getLobbyCode(), new GuessDTO(firstWord));
+
+        // Card is revealed, score increased
+        assertTrue(game.getBoard().findCardByWord(firstWord).isRevealed());
+    }
+
+    @Test
+    @Transactional
+    public void submitGuess_assassin_endsGame() {
+        Game game = gameService.startGame(testLobby.getLobbyCode());
+
+        ClueDTO clue = new ClueDTO();
+        clue.setWord("danger");
+        clue.setCount(1);
+        turnService.submitClue(testLobby.getLobbyCode(), clue);
+
+        // Find the assassin card
+        String assassinWord = game.getBoard().getCards().stream()
+                .filter(c -> c.getCardType() == CardType.ASSASSIN)
+                .findFirst().get().getWord();
+
+        turnService.submitGuess(testLobby.getLobbyCode(), new GuessDTO(assassinWord));
+
+
+        assertEquals(GameStatus.FINISHED, game.getStatus());
+        assertNotNull(game.getWinningTeam());
     }
 }
