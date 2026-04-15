@@ -1,7 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.entity;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
@@ -66,13 +65,6 @@ public class Game {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
-
-    private String currentHint;
-    private Integer currentHintCount;
-    private int remainingGuesses;
-
-    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<GameHistory> gameHistories = new ArrayList<>();
     
     @PrePersist
     protected void onCreate() {
@@ -134,13 +126,4 @@ public class Game {
     public void setWinningTeam(TeamColor winningTeam) { this.winningTeam = winningTeam; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
-
-    public String getCurrentHint() { return currentHint; }
-    public void setCurrentHint(String currentHint) { this.currentHint = currentHint; }
-
-    public Integer getCurrentHintCount() { return currentHintCount; }
-    public void setCurrentHintCount(Integer currentHintCount) { this.currentHintCount = currentHintCount; }
-
-    public int getRemainingGuesses() { return remainingGuesses; }
-    public void setRemainingGuesses(int remainingGuesses) { this.remainingGuesses = remainingGuesses; }
 }
