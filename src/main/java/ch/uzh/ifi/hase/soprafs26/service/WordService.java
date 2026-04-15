@@ -107,7 +107,6 @@ public class WordService {
         }
     }
 
-
     private List<String> getFallbackWords() {
         List<String> words = new ArrayList<>(DEFAULT_WORDS);
         Collections.shuffle(words);
