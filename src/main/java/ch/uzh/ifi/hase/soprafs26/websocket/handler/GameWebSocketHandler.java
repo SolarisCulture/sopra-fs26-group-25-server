@@ -41,6 +41,9 @@ public class GameWebSocketHandler {
         messagingTemplate.convertAndSend(
                 "/topic/game/" + lobbyCode + "/spymaster",
                 GameEvent.gameRestarting(lobbyCode, spymasterBoard)
+            );
+    }
+    
     public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
         log.info("Broadcasting CLUE_GIVEN for lobby: {}", lobbyCode);
         String eventType = eventTypeE.toString();
