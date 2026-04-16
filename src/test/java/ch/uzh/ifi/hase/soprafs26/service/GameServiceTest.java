@@ -312,7 +312,7 @@ class GameServiceTest {
             .thenReturn(Optional.of(testLobby));
 
         // Mock the words for the game (else IndexOutOfBounds)
-        when(wordService.getWordsForGame()).thenReturn(IntStream.range(0, 25).mapToObj(i -> "word" + i).toList());
+        when(wordService.getWordsForGame(testLobby.getSettings().getDifficulty())).thenReturn(IntStream.range(0, 25).mapToObj(i -> "word" + i).toList());
 
         Game result = gameService.restartGame(testLobby.getLobbyCode());
 

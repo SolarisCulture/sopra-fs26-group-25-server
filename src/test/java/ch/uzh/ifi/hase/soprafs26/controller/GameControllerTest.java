@@ -248,7 +248,6 @@ public class GameControllerTest {
         mockMvc.perform(post("/api/games/123/backToLobby"))
                 .andExpect(status().isBadRequest());
     }
-}
 
     // Clue endpoint tests
     @Test
@@ -258,8 +257,8 @@ public class GameControllerTest {
         clueDTO.setCount(3);
 
         mockMvc.perform(post("/api/games/ABC123/clue")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(clueDTO)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(clueDTO)))
                 .andExpect(status().isOk());
 
         verify(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
@@ -272,11 +271,11 @@ public class GameControllerTest {
         clueDTO.setCount(3);
 
         doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hint cannot be empty"))
-            .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+                .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
 
         mockMvc.perform(post("/api/games/ABC123/clue")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(clueDTO)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(clueDTO)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -287,11 +286,11 @@ public class GameControllerTest {
         clueDTO.setCount(3);
 
         doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hint cannot be empty"))
-            .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+                .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
 
         mockMvc.perform(post("/api/games/ABC123/clue")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(clueDTO)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(clueDTO)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -302,11 +301,11 @@ public class GameControllerTest {
         clueDTO.setCount(-1);
 
         doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Count must be positive"))
-            .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+                .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
 
         mockMvc.perform(post("/api/games/ABC123/clue")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(clueDTO)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(clueDTO)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -317,28 +316,28 @@ public class GameControllerTest {
         clueDTO.setCount(3);
 
         doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not spymaster's turn"))
-            .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+                .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
 
         mockMvc.perform(post("/api/games/ABC123/clue")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(clueDTO)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(clueDTO)))
                 .andExpect(status().isBadRequest());
     }
 
     /**
-	 * Helper Method to convert userPostDTO into a JSON string such that the input
-	 * can be processed
-	 * Input will look like this: {"name": "Test User", "username": "testUsername"}
-	 * 
-	 * @param object
-	 * @return string
-	 */
-	private String asJsonString(final Object object) {
-		try {
-			return new ObjectMapper().writeValueAsString(object);
-		} catch (JacksonException e) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					String.format("The request body could not be created.%s", e.toString()));
-		}
-	}
+     * Helper Method to convert userPostDTO into a JSON string such that the input
+     * can be processed
+     * Input will look like this: {"name": "Test User", "username": "testUsername"}
+     *
+     * @param object
+     * @return string
+     */
+    private String asJsonString(final Object object) {
+        try {
+            return new ObjectMapper().writeValueAsString(object);
+        } catch (JacksonException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    String.format("The request body could not be created.%s", e.toString()));
+        }
+    }
 }

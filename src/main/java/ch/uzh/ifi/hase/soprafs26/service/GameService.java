@@ -7,17 +7,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import ch.uzh.ifi.hase.soprafs26.constant.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import ch.uzh.ifi.hase.soprafs26.constant.CardType;
-import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
-import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
-import ch.uzh.ifi.hase.soprafs26.constant.Role;
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
-import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
 import ch.uzh.ifi.hase.soprafs26.entity.Board;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;

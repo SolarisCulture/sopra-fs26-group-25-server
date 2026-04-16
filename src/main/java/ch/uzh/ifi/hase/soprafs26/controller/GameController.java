@@ -67,6 +67,8 @@ public class GameController {
     @ResponseStatus(HttpStatus.OK)
     public void regenerateBoard(@PathVariable String lobbyCode, @RequestParam Long spymasterId ) {
         gameService.regenerateBoard(lobbyCode, spymasterId);
+    }
+
     @PostMapping("/api/games/{lobbyCode}/clue")
     @ResponseStatus(HttpStatus.OK)
     public void publishHint(@PathVariable String lobbyCode, 
