@@ -35,6 +35,20 @@ public class GameWebSocketHandler {
         );
     }
 
+    public void broadcastGameRestarting(String lobbyCode, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
+        log.info("Broadcasting GAME_RESTARTING for lobby: {}", lobbyCode);
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spymaster",
+                GameEvent.gameRestarting(lobbyCode, spymasterBoard)
+            );
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spy",
+                GameEvent.gameRestarting(lobbyCode, operativeBoard)
+            );
+    }
+    
     public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
         log.info("Broadcasting CLUE_GIVEN for lobby: {}", lobbyCode);
         String eventType = eventTypeE.toString();
@@ -46,7 +60,13 @@ public class GameWebSocketHandler {
 
         messagingTemplate.convertAndSend(
                 "/topic/game/" + lobbyCode + "/spy",
-                new GameEvent(eventType, lobbyCode, operativeBoard)
+                GameEvent.gameRestarting(lobbyCode, operativeBoard)
         );
     }
+
+    public void broadcastReturningToLobby(String lobbyCode) {
+        log.info("Broadcasting RETURNING_TO_LOBBY for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode, GameEvent.returningToLobby(lobbyCode));
+    }
+
 }

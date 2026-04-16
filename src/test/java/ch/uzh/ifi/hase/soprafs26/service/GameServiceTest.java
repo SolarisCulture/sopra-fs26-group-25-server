@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -300,22 +301,22 @@ class GameServiceTest {
     }
 
     @Test
-    public void restartGame_validFinishedGame_callsStartGame() {
-        Game game = new Game();
-        game.setStatus(GameStatus.FINISHED);
-        testLobby.setGame(game);
+    public void restartGame_validFinishedGame_recreatesGame() {
 
-        when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
+        Game finishedGame = new Game();
+        finishedGame.setStatus(GameStatus.FINISHED);
+        testLobby.setGame(finishedGame);
 
-        Game newGame = new Game();
+        when(lobbyRepository.findByLobbyCode(any()))
+            .thenReturn(Optional.of(testLobby));
 
-        doReturn(newGame).when(gameService).startGame(Mockito.any());
+        // Mock the words for the game (else IndexOutOfBounds)
+        when(wordService.getWordsForGame()).thenReturn(IntStream.range(0, 25).mapToObj(i -> "word" + i).toList());
 
         Game result = gameService.restartGame(testLobby.getLobbyCode());
 
-        assertEquals(newGame, result);
-
-        verify(gameService, times(1)).startGame(testLobby.getLobbyCode());
+        assertNotNull(result);
+        assertEquals(GameStatus.ACTIVE, result.getStatus());
     }
 
     @Test
