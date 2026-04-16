@@ -1,26 +1,37 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.*;
-import ch.uzh.ifi.hase.soprafs26.entity.*;
-import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
-import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
-import ch.uzh.ifi.hase.soprafs26.repository.TurnRepository;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
-import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import ch.uzh.ifi.hase.soprafs26.constant.CardType;
+import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
+import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
+import ch.uzh.ifi.hase.soprafs26.constant.Role;
+import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
+import ch.uzh.ifi.hase.soprafs26.entity.Board;
+import ch.uzh.ifi.hase.soprafs26.entity.Game;
+import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.entity.Player;
+import ch.uzh.ifi.hase.soprafs26.entity.Turn;
+import ch.uzh.ifi.hase.soprafs26.entity.WordCard;
+import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
+import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
+import ch.uzh.ifi.hase.soprafs26.repository.TurnRepository;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 
 @Service
 @Transactional

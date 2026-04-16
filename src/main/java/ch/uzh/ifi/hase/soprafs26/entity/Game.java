@@ -1,11 +1,23 @@
 package ch.uzh.ifi.hase.soprafs26.entity;
 
-import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
-import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
+import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 
 @Entity
@@ -53,7 +65,7 @@ public class Game {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
-
+    
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
