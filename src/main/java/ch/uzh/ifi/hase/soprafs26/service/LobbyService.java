@@ -151,12 +151,13 @@ public class LobbyService {
         
         // Checks if there is already one Spymaster (only if the changed role is Spymaster)
         if (role == Role.SPYMASTER) {
-            long existingSpymasterCount = playerList.stream()
-                .filter(p -> p.getRole() == Role.SPYMASTER && !p.getId().equals(playerID) && p.getTeam() == player.getTeam())
-                .count();
-            if (existingSpymasterCount > 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Team already has a spymaster");
-            }
+            Player existingSpymaster = playerList.stream()
+            .filter(p -> p.getRole() == Role.SPYMASTER)
+            .filter(p -> p.getTeam() == player.getTeam())
+            .findFirst()
+            .orElse(null);
+            System.out.println(existingSpymaster);
+            if (existingSpymaster != null) {existingSpymaster.setRole(Role.SPY);}
         }
         player.setRole(role); // Sets the player's role to the new value
 
@@ -191,17 +192,18 @@ public class LobbyService {
     public Long joinLobby(String lobbyCode, String username) {
         // Check if lobby exists
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
+        String newUsername = username.replaceAll("^\"|\"$", "");
 
         // Check username uniqueness
         List<Player> playerList = lobby.getPlayerList();
-        boolean usernameExists = playerList.stream().anyMatch(p -> p.getUsername().equals(username));
+        boolean usernameExists = playerList.stream().anyMatch(p -> p.getUsername().equals(newUsername));
         if (usernameExists) {throw new ResponseStatusException(HttpStatus.CONFLICT, "The username is not unique!");}
 
         // Check game state
         if (!(lobby.getLobbyStatus() == LobbyStatus.WAITING)) {throw new ResponseStatusException(HttpStatus.CONFLICT, "The game is still running!");} 
 
         // Add player
-        Player player = new Player(username);
+        Player player = new Player(newUsername);
         lobby.addPlayer(player);
 
         lobby = lobbyRepository.save(lobby);
@@ -210,16 +212,15 @@ public class LobbyService {
         // Fallback: find by username
         if(savedPlayer == null){
             savedPlayer = lobby.getPlayerList().stream()
-                            .filter(p -> p.getUsername().equals(username))
+                            .filter(p -> p.getUsername().equals(newUsername))
                             .findFirst()
                             .orElseThrow(() -> new RuntimeException("Player not found after save"));
         }
 
-        lobbyWebSocketHandler.broadcastPlayerJoined(lobbyCode, player);
+        lobbyWebSocketHandler.broadcastPlayerJoined(lobbyCode, savedPlayer);
 
         return savedPlayer.getId();
     }
-
     public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)
         // Check if lobby exists
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));
