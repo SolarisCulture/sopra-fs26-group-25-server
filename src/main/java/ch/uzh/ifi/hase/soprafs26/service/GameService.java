@@ -7,17 +7,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import ch.uzh.ifi.hase.soprafs26.constant.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import ch.uzh.ifi.hase.soprafs26.constant.CardType;
-import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
-import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
-import ch.uzh.ifi.hase.soprafs26.constant.Role;
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
-import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
 import ch.uzh.ifi.hase.soprafs26.entity.Board;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
@@ -56,10 +51,14 @@ public class GameService {
     private Game createNewGame(Lobby lobby) {
         // 3. Fetch 25 random words
         // for now short hardcoded list of words
-        List<String> words = wordService.getWordsForGame();
+        Difficulty difficulty =  lobby.getSettings().getDifficulty();
+        List<String> words = wordService.getWordsForGame(difficulty);
 
         // 4.Generate card type distribution (the "key card")
-        List<CardType> types = generateCardTypes();
+        // Pick starting team randomly
+        TeamColor startingTeam = Math.random() < 0.5 ? TeamColor.RED : TeamColor.BLUE;
+
+        List<CardType> types = generateCardTypes(startingTeam);
 
         // 5. Create word cards
         List<WordCard> cards = new ArrayList<>();
@@ -78,14 +77,19 @@ public class GameService {
         // 7. Create game
         Game game = new Game();
         game.setBoard(board);
+        game.setStartingTeam(startingTeam);
         board.setGame(game);
         game.setStatus(GameStatus.ACTIVE);
         game.setMaxRounds(lobby.getSettings().getRounds());
+        // Set totals based on who starts
+        game.setRedTotal(startingTeam == TeamColor.RED ? 9 : 8);
+        game.setBlueTotal(startingTeam == TeamColor.BLUE ? 9 : 8);
 
         // 8. Create first turn
         Turn firstTurn = new Turn();
         firstTurn.setGame(game);
-        firstTurn.setCurrentTeamColor(TeamColor.RED);
+        // First turn goes to starting team
+        firstTurn.setCurrentTeamColor(startingTeam);
         firstTurn.setPhase(TurnPhase.SPYMASTER_TURN);
         firstTurn.setGuessesRemaining(0); // or don't set it up in the beginning?
         firstTurn.setStartTime(LocalDateTime.now());
@@ -142,6 +146,64 @@ public class GameService {
         Game game = lobby.getGame();
 
         return buildBoardDTO(game, role);
+    }
+
+    public Game regenerateBoard(String lobbyCode, Long playerId ) {
+        Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
+        if (lobbyOptional.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found!");
+        }
+        Lobby lobby = lobbyOptional.get();
+        Game game = lobby.getGame();
+
+        if (game == null || game.getStatus() != GameStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No active game!");
+        }
+
+        // Check player is spymaster
+        Player player = lobby.getPlayerById(playerId);
+        if (player == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found");
+        }
+        if (player.getRole() != Role.SPYMASTER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only spymaster can regenerate the board");
+        }
+
+        // Only allow regeneration during the first turn before any clue is given
+        Turn currentTurn = game.getCurrentTurn();
+        if (currentTurn.getClue() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot regenerate after a clue has been given!");
+        }
+
+        // New starting team
+        TeamColor startingTeam = Math.random() < 0.5 ? TeamColor.RED : TeamColor.BLUE;
+        game.setStartingTeam(startingTeam);
+        game.setRedTotal(startingTeam == TeamColor.RED ? 9 : 8);
+        game.setBlueTotal(startingTeam == TeamColor.BLUE ? 9 : 8);
+
+        // New words and card types
+        Difficulty difficulty =  lobby.getSettings().getDifficulty();
+        List<String> words = wordService.getWordsForGame(difficulty);
+        List<CardType> types = generateCardTypes(startingTeam);
+
+        List<WordCard> cards = game.getBoard().getCards();
+        for (int i = 0; i < 25; i++) {
+            cards.get(i).setWord(words.get(i));
+            cards.get(i).setCardType(types.get(i));
+            cards.get(i).setRevealed(false);
+        }
+
+        // Reset turn to starting team
+        currentTurn.setCurrentTeamColor(startingTeam);
+
+        gameRepository.save(game);
+
+        // Broadcast new board
+        GameBoardDTO spymasterView = buildBoardDTO(game, Role.SPYMASTER);
+        GameBoardDTO spyView = buildBoardDTO(game, Role.SPY);
+        gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.BOARD_REGENERATED, spymasterView, spyView);
+
+        return game;
     }
 
     public void calculateGameStatistics(String lobbyCode) {
@@ -308,15 +370,18 @@ public class GameService {
     }
 
 
-    private List<CardType> generateCardTypes() {
+    private List<CardType> generateCardTypes(TeamColor startingTeam) {
         // Codenames rules: starting team gets 9, other gets 8, 7 neutral, 1 assassin
         List<CardType> types = new ArrayList<>();
 
+        CardType team1 = (startingTeam == TeamColor.RED) ? CardType.AGENTRED : CardType.AGENTBLUE;
+        CardType team2 = (startingTeam == TeamColor.RED) ? CardType.AGENTBLUE : CardType.AGENTRED;
+
         for (int i = 0; i < 9; i++) {
-            types.add(CardType.AGENTRED);
+            types.add(team1);
         }
         for (int i = 0; i < 8; i++) {
-            types.add(CardType.AGENTBLUE);
+            types.add(team2);
         }
         for (int i = 0; i < 7; i++) {
             types.add(CardType.CIVILIAN);

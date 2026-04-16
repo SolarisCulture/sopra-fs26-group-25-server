@@ -16,8 +16,11 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
 
@@ -64,7 +67,7 @@ class GameServiceTest {
     public void startGame_validLobby_createsGameWith25Cards() {
         // Tell the mocks what to return
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
-        when(wordService.getWordsForGame()).thenCallRealMethod();  // use real word list
+        when(wordService.getWordsForGame(testLobby.getSettings().getDifficulty())).thenCallRealMethod();  // use real word list
         when(lobbyRepository.save(any(Lobby.class))).thenReturn(testLobby);
         when(gameRepository.save(any(Game.class))).thenAnswer(invocation -> {
             Game g = invocation.getArgument(0);
@@ -85,7 +88,6 @@ class GameServiceTest {
         assertNotNull(game.getBoard());
         assertEquals(25, game.getBoard().getCards().size());
         assertEquals(GameStatus.ACTIVE, game.getStatus());
-        assertEquals(TeamColor.RED, game.getCurrentTurn().getCurrentTeamColor());
         assertEquals(TurnPhase.SPYMASTER_TURN, game.getCurrentTurn().getPhase());
 
         // Verify board has correct card type distribution
@@ -99,8 +101,7 @@ class GameServiceTest {
         long assassinCount = game.getBoard().getCards().stream()
                 .filter(c -> c.getCardType() == CardType.ASSASSIN).count();
 
-        assertEquals(9, redCount);
-        assertEquals(8, blueCount);
+        assertEquals(9, game.getStartingTeam() == TeamColor.RED ? redCount : blueCount);
         assertEquals(7, civilianCount);
         assertEquals(1, assassinCount);
 
@@ -311,7 +312,7 @@ class GameServiceTest {
             .thenReturn(Optional.of(testLobby));
 
         // Mock the words for the game (else IndexOutOfBounds)
-        when(wordService.getWordsForGame()).thenReturn(IntStream.range(0, 25).mapToObj(i -> "word" + i).toList());
+        when(wordService.getWordsForGame(testLobby.getSettings().getDifficulty())).thenReturn(IntStream.range(0, 25).mapToObj(i -> "word" + i).toList());
 
         Game result = gameService.restartGame(testLobby.getLobbyCode());
 
@@ -354,5 +355,148 @@ class GameServiceTest {
         Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
 
         assertThrows(ResponseStatusException.class, () -> {gameService.backToLobby(testLobby.getLobbyCode());});
+    }
+
+    // ==================== regenerateBoard tests ====================
+
+    @Test
+    public void regenerateBoard_validSpymaster_success() {
+        // Setup
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+
+        Turn turn = new Turn();
+        turn.setClue(null); // no clue given yet
+        turn.setCurrentTeamColor(TeamColor.RED);
+        game.setCurrentTurn(turn);
+
+        Board board = new Board();
+        List<WordCard> cards = new ArrayList<>();
+        for (int i = 0; i < 25; i++) {
+            WordCard card = new WordCard();
+            card.setWord("WORD" + i);
+            card.setCardType(CardType.CIVILIAN);
+            card.setRevealed(false);
+            cards.add(card);
+        }
+        board.setCards(cards);
+        game.setBoard(board);
+
+        Player spymaster = new Player("testPlayer");
+        spymaster.setId(1L);
+        spymaster.setRole(Role.SPYMASTER);
+
+        testLobby.setGame(game);
+        game.setLobby(testLobby);
+        testLobby.setPlayerList(new ArrayList<>(List.of(spymaster)));
+
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+        when(gameRepository.save(any(Game.class))).thenReturn(game);
+
+        List<String> testWords = new ArrayList<>();
+        for (int i = 0; i < 25; i++) {
+            testWords.add("NEWWORD" + i);
+        }
+        when(wordService.getWordsForGame(testLobby.getSettings().getDifficulty())).thenReturn(testWords);
+
+        gameService.regenerateBoard("ABC123", 1L);
+
+        // Board still has 25 cards
+        assertEquals(25, game.getBoard().getCards().size());
+        // All cards unrevealed
+        assertTrue(game.getBoard().getCards().stream().noneMatch(WordCard::isRevealed));
+        // Starting team is set
+        assertNotNull(game.getStartingTeam());
+        verify(gameRepository).save(game);
+    }
+
+    @Test
+    public void regenerateBoard_notSpymaster_throwsForbidden() {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        Turn turn = new Turn();
+        turn.setClue(null);
+        game.setCurrentTurn(turn);
+
+        Player spy = new Player("testPlayer");
+        spy.setId(1L);
+        spy.setRole(Role.SPY);
+
+        testLobby.setGame(game);
+        game.setLobby(testLobby);
+        testLobby.setPlayerList(new ArrayList<>(List.of(spy)));
+
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> gameService.regenerateBoard("ABC123", 1L));
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+    }
+
+    @Test
+    public void regenerateBoard_clueAlreadyGiven_throwsBadRequest() {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        Turn turn = new Turn();
+        Clue clue = new Clue();
+        clue.setWord("animal");
+        turn.setClue(clue); // clue already given
+        game.setCurrentTurn(turn);
+
+        Player spymaster = new Player("testPlayer");
+        spymaster.setId(1L);
+        spymaster.setRole(Role.SPYMASTER);
+
+        testLobby.setGame(game);
+        game.setLobby(testLobby);
+        testLobby.setPlayerList(new ArrayList<>(List.of(spymaster)));
+
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> gameService.regenerateBoard("ABC123", 1L));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    public void regenerateBoard_gameNotActive_throwsBadRequest() {
+        Game game = new Game();
+        game.setStatus(GameStatus.FINISHED);
+
+        testLobby.setGame(game);
+
+        Player spymaster = new Player("testPlayer");
+        spymaster.setId(1L);
+        spymaster.setRole(Role.SPYMASTER);
+        testLobby.setPlayerList(new ArrayList<>(List.of(spymaster)));
+
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> gameService.regenerateBoard("ABC123", 1L));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    public void regenerateBoard_playerNotFound_throwsNotFound() {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+
+        testLobby.setGame(game);
+        testLobby.setPlayerList(new ArrayList<>());
+
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> gameService.regenerateBoard("ABC123", 999L));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 }

@@ -69,4 +69,8 @@ public class GameEvent {
         return new GameEvent("TURN_CHANGED", lobbyCode, board);
     }
 
+    public static GameEvent boardRegenerated(String lobbyCode, GameBoardDTO board){
+        return new GameEvent("BOARD_REGENERATED", lobbyCode, board);
+    }
+
 }
