@@ -204,8 +204,20 @@ public class LobbyService {
         Player player = new Player(username);
         lobby.addPlayer(player);
 
-        lobbyRepository.save(lobby);
-        return player.getId();
+        lobby = lobbyRepository.save(lobby);
+
+        Player savedPlayer = lobby.getPlayerById(player.getId());
+        // Fallback: find by username
+        if(savedPlayer == null){
+            savedPlayer = lobby.getPlayerList().stream()
+                            .filter(p -> p.getUsername().equals(username))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Player not found after save"));
+        }
+
+        lobbyWebSocketHandler.broadcastPlayerJoined(lobbyCode, player);
+
+        return savedPlayer.getId();
     }
 
     public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)

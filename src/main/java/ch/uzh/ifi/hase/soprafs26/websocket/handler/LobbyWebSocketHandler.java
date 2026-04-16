@@ -1,15 +1,17 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
 
 
@@ -64,17 +66,26 @@ public class LobbyWebSocketHandler {
 
     @MessageMapping("/lobby/{lobbyCode}/subscribe") // Receive client here if asked to subscribe => run this code
     @SendTo("/topic/lobbies/{lobbyCode}") // Client now subscribed to this lobby
-    public LobbyEvent subscribeToLobby(@DestinationVariable String lobbyCode, LobbyEvent event, StompHeaderAccessor accessor){
+    public LobbyEvent subscribeToLobby(@DestinationVariable String lobbyCode, @Payload Map<String, Object> payload, StompHeaderAccessor accessor){
         log.info("Client subscribed to lobby: {}", lobbyCode);
 
-        // Saves lobbyCode and playerId when client subscribes (used for connection loss)
-        accessor.getSessionAttributes().put("lobbyCode", lobbyCode);
-        if (event.getData() instanceof PlayerDTO playerDTO) {
-            accessor.getSessionAttributes().put("playerId", playerDTO.getId());
-        } else {
-            log.warn("Subscription event did not contain a PlayerDTO; cannot store playerId.", lobbyCode);
+        // TODO CREATE SPECIFIC PAYLOAD DTO FOR SUBSCRIPTIONS
+        Long playerId = null;
+        Object dataObj = payload.get("data");
+        if(dataObj instanceof Map){
+            Map<String, Object> data = (Map<String, Object>) dataObj;
+            Object idObj = data.get("id");
+            if(idObj instanceof Number) {
+                playerId = ((Number) idObj).longValue();
+            }
         }
 
-        return event;
+        if(playerId != null){
+            accessor.getSessionAttributes().put("playerId", playerId);
+            log.info("Stored playerId {} for session {}", playerId, accessor.getSessionId());
+        } else {
+            log.warn("no playerId in subscription payload");
+        }
+        return new LobbyEvent("SUBSCRIBE", lobbyCode, null);
     }
 }

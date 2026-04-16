@@ -1,5 +1,10 @@
 package ch.uzh.ifi.hase.soprafs26.controller;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +22,7 @@ import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.TransferHostRequest;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
-import org.springframework.web.bind.annotation.PostMapping;
+
 
 
 @RestController
@@ -63,6 +68,15 @@ public class LobbyController {
         lobbyService.transferHost(lobbyCode, request.getCurrentHostId(), request.getNewHostId());
     }
 
+	@GetMapping("/api/lobbies/{lobbyCode}/players")
+	@ResponseStatus(HttpStatus.OK)
+	public List<PlayerDTO> getPlayers(@PathVariable String lobbyCode) {
+		Lobby lobby = lobbyService.getLobbyByCode(lobbyCode);
+		return lobby.getPlayerList().stream()
+				.map(DTOMapper.INSTANCE::convertEntityToPlayerDTO)
+				.collect(Collectors.toList());
+	}
+
 	@DeleteMapping("/api/lobbies/{lobbyCode}/players/{playerId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void leaveLobby(
@@ -88,9 +102,9 @@ public class LobbyController {
 
 	@PostMapping("/api/lobbies/{lobbyCode}/join")
 	@ResponseStatus(HttpStatus.OK)
-	public Long joinLobby(@PathVariable String lobbyCode, @RequestBody String username) {
+	public Map<String, Long> joinLobby(@PathVariable String lobbyCode, @RequestBody String username) {
 		if (lobbyCode == null || username == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
 		Long id = lobbyService.joinLobby(lobbyCode, username);
-		return id;
+		return Collections.singletonMap("id", id);
 	}
 }
