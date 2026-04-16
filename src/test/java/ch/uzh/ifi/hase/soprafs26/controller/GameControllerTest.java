@@ -5,13 +5,28 @@ import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.*;
 import ch.uzh.ifi.hase.soprafs26.service.GameService;
 import ch.uzh.ifi.hase.soprafs26.service.TurnService;
+import java.util.List;
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -25,6 +40,19 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import ch.uzh.ifi.hase.soprafs26.constant.CardType;
+import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
+import ch.uzh.ifi.hase.soprafs26.constant.Role;
+import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.entity.Game;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
+import ch.uzh.ifi.hase.soprafs26.service.GameService;
+import ch.uzh.ifi.hase.soprafs26.service.TurnService;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(GameController.class)
 public class GameControllerTest {
@@ -220,4 +248,97 @@ public class GameControllerTest {
         mockMvc.perform(post("/api/games/123/backToLobby"))
                 .andExpect(status().isBadRequest());
     }
+}
+
+    // Clue endpoint tests
+    @Test
+    public void submitClue_validRequest_returns200() throws Exception {
+        ClueDTO clueDTO = new ClueDTO();
+        clueDTO.setWord("animal");
+        clueDTO.setCount(3);
+
+        mockMvc.perform(post("/api/games/ABC123/clue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(clueDTO)))
+                .andExpect(status().isOk());
+
+        verify(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+    }
+
+    @Test
+    public void submitClue_emptyWord_returns400() throws Exception {
+        ClueDTO clueDTO = new ClueDTO();
+        clueDTO.setWord("");
+        clueDTO.setCount(3);
+
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hint cannot be empty"))
+            .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+
+        mockMvc.perform(post("/api/games/ABC123/clue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(clueDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void submitClue_nullWord_returns400() throws Exception {
+        ClueDTO clueDTO = new ClueDTO();
+        clueDTO.setWord(null);
+        clueDTO.setCount(3);
+
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hint cannot be empty"))
+            .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+
+        mockMvc.perform(post("/api/games/ABC123/clue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(clueDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void submitClue_negativeCount_returns400() throws Exception {
+        ClueDTO clueDTO = new ClueDTO();
+        clueDTO.setWord("animal");
+        clueDTO.setCount(-1);
+
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Count must be positive"))
+            .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+
+        mockMvc.perform(post("/api/games/ABC123/clue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(clueDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void submitClue_serviceThrowsBadRequest_returns400() throws Exception {
+        ClueDTO clueDTO = new ClueDTO();
+        clueDTO.setWord("animal");
+        clueDTO.setCount(3);
+
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not spymaster's turn"))
+            .when(turnService).submitClue(eq("ABC123"), any(ClueDTO.class));
+
+        mockMvc.perform(post("/api/games/ABC123/clue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(clueDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+	 * Helper Method to convert userPostDTO into a JSON string such that the input
+	 * can be processed
+	 * Input will look like this: {"name": "Test User", "username": "testUsername"}
+	 * 
+	 * @param object
+	 * @return string
+	 */
+	private String asJsonString(final Object object) {
+		try {
+			return new ObjectMapper().writeValueAsString(object);
+		} catch (JacksonException e) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					String.format("The request body could not be created.%s", e.toString()));
+		}
+	}
 }

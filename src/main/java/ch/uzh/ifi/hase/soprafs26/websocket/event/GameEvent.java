@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.event;
 
+import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 
 public class GameEvent {
@@ -7,6 +8,10 @@ public class GameEvent {
     private String type;
     private String lobbyCode;
     private GameBoardDTO board;
+    private String hint;
+    private int count;
+    private TeamColor team;
+    private Long spymasterId;
 
     public GameEvent(String type, String lobbyCode) {
         this.type = type;
@@ -28,11 +33,30 @@ public class GameEvent {
     public GameBoardDTO getBoard() { return board; }
     public void setBoard(GameBoardDTO board) { this.board = board; }
 
+    public String getHint() { return hint; }
+    public void setHint(String hint) { this.hint = hint; }
+
+    public int getCount() { return count; }
+    public void setCount(int count) { this.count = count; }
+
+    public TeamColor getTeam() { return team; }
+    public void setTeam(TeamColor team) { this.team = team; }
+
+    public Long getSpymasterId() { return spymasterId; }
+    public void setSpymasterId(Long spymasterId) { this.spymasterId = spymasterId; }
+
     // Factory methods for convenience
     public static GameEvent gameStarted(String lobbyCode, GameBoardDTO board){
         return new GameEvent("GAME_STARTED", lobbyCode, board);
     }
 
+    public static GameEvent gameRestarting(String lobbyCode, GameBoardDTO board) {
+        return new GameEvent("GAME_RESTARTING", lobbyCode, board);
+    }
+
+    public static GameEvent returningToLobby(String lobbyCode) {
+        return new GameEvent("RETURNING_TO_LOBBY", lobbyCode);
+    }
     public static GameEvent clueGiven(String lobbyCode, GameBoardDTO board){
         return new GameEvent("CLUE_GIVEN", lobbyCode, board);
     }

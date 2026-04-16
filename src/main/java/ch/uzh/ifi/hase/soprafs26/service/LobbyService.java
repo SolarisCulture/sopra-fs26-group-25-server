@@ -45,9 +45,21 @@ public class LobbyService {
         Player host = new Player(hostUsername);
         host.setHost(true);
         lobby.addPlayer(host);
-        lobby.setHostId(host.getId());
+
+        // dummy ID --> avoid NullException
+        lobby.setHostId(-1L);
 
         Lobby savedLobby = lobbyRepository.save(lobby);
+        
+        Player persistedHost = savedLobby.getPlayerList().stream()
+                .filter(Player::isHost)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Host player not found"));
+
+        savedLobby.setHostId(persistedHost.getId());
+
+        savedLobby = lobbyRepository.save(savedLobby);
+        
         // Broadcast lobby created event
         lobbyWebSocketHandler.broadcastLobbyCreated(savedLobby.getLobbyCode(), savedLobby);
 
@@ -192,8 +204,20 @@ public class LobbyService {
         Player player = new Player(username);
         lobby.addPlayer(player);
 
-        lobbyRepository.save(lobby);
-        return player.getId();
+        lobby = lobbyRepository.save(lobby);
+
+        Player savedPlayer = lobby.getPlayerById(player.getId());
+        // Fallback: find by username
+        if(savedPlayer == null){
+            savedPlayer = lobby.getPlayerList().stream()
+                            .filter(p -> p.getUsername().equals(username))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Player not found after save"));
+        }
+
+        lobbyWebSocketHandler.broadcastPlayerJoined(lobbyCode, player);
+
+        return savedPlayer.getId();
     }
 
     public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)
