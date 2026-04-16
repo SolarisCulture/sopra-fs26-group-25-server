@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -549,10 +550,18 @@ public class LobbyServiceTest {
 	public void joinLobby_validInput_addsPlayer() {
 		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
 
+        Mockito.when(lobbyRepository.save(Mockito.any(Lobby.class))).thenAnswer(invocation -> {
+            Lobby lobbyArg = invocation.getArgument(0);
+            lobbyArg.getPlayerList().stream()
+                .filter(p -> p.getId() == null)
+                .forEach(p -> p.setId(ThreadLocalRandom.current().nextLong()));
+            return lobbyArg;
+        });
+
 		int sizeBefore = testLobby.getPlayerList().size();
-
-		lobbyService.joinLobby("123", "E");
-
+        Long playerId = lobbyService.joinLobby("123", "E");
+        
+        assertNotNull(playerId);
 		assertEquals(sizeBefore + 1, testLobby.getPlayerList().size());
 	}
 
