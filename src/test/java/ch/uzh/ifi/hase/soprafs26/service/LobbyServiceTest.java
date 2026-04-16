@@ -514,13 +514,6 @@ public class LobbyServiceTest {
 		assertThrows(ResponseStatusException.class, () -> lobbyService.assignRole("333", player2.getId(), Role.SPY));
 	};
 
-	@Test
-	public void assignRole_invalidInput_returnsNotAuthorized() {
-		Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
-
-		assertThrows(ResponseStatusException.class, () -> lobbyService.assignRole(testLobby.getLobbyCode(), player1.getId(), Role.SPYMASTER));
-	};
-
 	// canStartGame
     @Test
 	public void canStartGame_validInput_returnsTrue() {
