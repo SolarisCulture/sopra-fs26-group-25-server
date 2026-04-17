@@ -158,8 +158,16 @@ public class TurnService {
     }
 
     public void endTurn(String lobbyCode) {
+        endTurn(lobbyCode, false);
+    }
+
+    public void endTurn(String lobbyCode, boolean voluntary) {
         Game game = getActiveGame(lobbyCode);
         Turn currentTurn = game.getCurrentTurn();
+
+        if (voluntary && currentTurn.getPhase() != TurnPhase.SPY_TURN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Can only end turn during guessing phase");
+        }
 
         // Figure out the other team
         TeamColor nextTeam = (currentTurn.getCurrentTeamColor() == TeamColor.RED) ? TeamColor.BLUE : TeamColor.RED;
