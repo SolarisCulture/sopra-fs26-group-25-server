@@ -340,4 +340,46 @@ public class GameControllerTest {
                     String.format("The request body could not be created.%s", e.toString()));
         }
     }
+
+    // ==================== submitGuess tests ====================
+
+    @Test
+    public void submitGuess_returnsNoContent() throws Exception {
+        mockMvc.perform(post("/api/games/ABC123/guess")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"word\":\"APPLE\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(turnService).submitGuess(eq("ABC123"), any(GuessDTO.class));
+    }
+
+    @Test
+    public void submitGuess_cardNotFound_returnsBadRequest() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found"))
+                .when(turnService).submitGuess(eq("ABC123"), any(GuessDTO.class));
+
+        mockMvc.perform(post("/api/games/ABC123/guess")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"word\":\"NOTEXIST\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ==================== endTurn tests ====================
+
+    @Test
+    public void endTurn_returnsNoContent() throws Exception {
+        mockMvc.perform(post("/api/games/ABC123/end-turn"))
+                .andExpect(status().isNoContent());
+
+        verify(turnService).endTurn("ABC123", true);
+    }
+
+    @Test
+    public void endTurn_wrongPhase_returnsBadRequest() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Can only end turn during guessing phase"))
+                .when(turnService).endTurn("ABC123", true);
+
+        mockMvc.perform(post("/api/games/ABC123/end-turn"))
+                .andExpect(status().isBadRequest());
+    }
 }
