@@ -47,7 +47,7 @@ public class LobbyController {
 
     @GetMapping("/api/lobbies/{lobbyCode}")
     @ResponseStatus(HttpStatus.OK)
-    public LobbyDTO getLobby(@PathVariable String lobbyCode) {
+    public LobbyDTO getLobby(@PathVariable("lobbyCode") String lobbyCode) {
 		if (lobbyCode == null || lobbyCode.trim().isEmpty()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lobby code cannot be empty");
 		}
@@ -70,7 +70,7 @@ public class LobbyController {
 
 	@GetMapping("/api/lobbies/{lobbyCode}/players")
 	@ResponseStatus(HttpStatus.OK)
-	public List<PlayerDTO> getPlayers(@PathVariable String lobbyCode) {
+	public List<PlayerDTO> getPlayers(@PathVariable("lobbyCode") String lobbyCode) {
 		Lobby lobby = lobbyService.getLobbyByCode(lobbyCode);
 		return lobby.getPlayerList().stream()
 				.map(DTOMapper.INSTANCE::convertEntityToPlayerDTO)
@@ -88,21 +88,21 @@ public class LobbyController {
 
 	@PutMapping("/api/lobbies/{lobbyCode}/player/{playerId}/team") 
 	@ResponseStatus(HttpStatus.OK)
-	public void assignPlayerToTeam(@PathVariable String lobbyCode, @PathVariable Long playerId, @RequestBody PlayerDTO playerDTO) {
+	public void assignPlayerToTeam(@PathVariable("lobbyCode") String lobbyCode, @PathVariable Long playerId, @RequestBody PlayerDTO playerDTO) {
 		if (lobbyCode == null || playerId == null || playerDTO == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
 		lobbyService.assignTeam(lobbyCode, playerId, playerDTO.getTeam());
 	}
 
     @PutMapping("/api/lobbies/{lobbyCode}/player/{playerId}/role")  
 	@ResponseStatus(HttpStatus.OK)
-	public void assignPlayerToRole(@PathVariable String lobbyCode, @PathVariable Long playerId, @RequestBody PlayerDTO playerDTO) {  	
+	public void assignPlayerToRole(@PathVariable("lobbyCode") String lobbyCode, @PathVariable Long playerId, @RequestBody PlayerDTO playerDTO) {  	
 		if (lobbyCode == null || playerId == null || playerDTO == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
 		lobbyService.assignRole(lobbyCode, playerId, playerDTO.getRole());
 	}
 
 	@PostMapping("/api/lobbies/{lobbyCode}/join")
 	@ResponseStatus(HttpStatus.OK)
-	public Map<String, Long> joinLobby(@PathVariable String lobbyCode, @RequestBody String username) {
+	public Map<String, Long> joinLobby(@PathVariable("lobbyCode") String lobbyCode, @RequestBody String username) {
 		if (lobbyCode == null || username == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
 		Long id = lobbyService.joinLobby(lobbyCode, username);
 		return Collections.singletonMap("id", id);
