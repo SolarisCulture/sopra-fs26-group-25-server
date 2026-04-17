@@ -8,6 +8,6 @@ runtime_config:
 
 # Disable health checks that break WebSocket idle connections
 readiness_check:
-  enable_ready_check: false
+  enabled: false
 liveness_check:
-  enable_liveness_check: false
+  enabled: false
