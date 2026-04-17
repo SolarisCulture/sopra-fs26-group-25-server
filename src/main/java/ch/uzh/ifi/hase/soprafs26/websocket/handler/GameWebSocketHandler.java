@@ -8,6 +8,7 @@ import org.springframework.stereotype.Controller;
 import ch.uzh.ifi.hase.soprafs26.constant.EventType;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
+import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
 
 
 @Controller
@@ -45,13 +46,18 @@ public class GameWebSocketHandler {
         String eventType = eventTypeE.toString();
 
         messagingTemplate.convertAndSend(
+            "/topic/lobbies/" + lobbyCode,
+            LobbyEvent.statusUpdated(lobbyCode, "IN_PROGRESS")
+        );
+
+        messagingTemplate.convertAndSend(
                 "/topic/game/" + lobbyCode + "/spymaster",
                 new GameEvent(eventType, lobbyCode, spymasterBoard)
         );
 
         messagingTemplate.convertAndSend(
                 "/topic/game/" + lobbyCode + "/spy",
-                GameEvent.gameRestarting(lobbyCode, operativeBoard)
+                new GameEvent(eventType, lobbyCode, operativeBoard)
         );
     }
 
