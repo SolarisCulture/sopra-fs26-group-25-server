@@ -1,13 +1,10 @@
 # https://cloud.google.com/appengine/docs/the-appengine-environments#comparing_high-level_features
 # https://cloud.google.com/appengine/docs/standard
 
-runtime: java
-env: flex 
-runtime_config:
-  jdk: openjdk17
+runtime: custom
+env: flex
 
-# Disable health checks that break WebSocket idle connections
 readiness_check:
-  enabled: false
+  enable_ready_check: false
 liveness_check:
-  enabled: false
+  enable_liveness_check: false
