@@ -3,8 +3,3 @@
 
 runtime: custom
 env: flex
-
-readiness_check:
-  enable_ready_check: false
-liveness_check:
-  enable_liveness_check: false
