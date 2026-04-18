@@ -1,7 +1,13 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
@@ -14,45 +20,49 @@ import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
 public class GameWebSocketHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GameWebSocketHandler.class); // For debugging
+    private final SimpMessagingTemplate messagingTemplate;
+    private final TurnService turnService;
 
-    private final SimpMessagingTemplate messagingTemplate; // The tool that sends messages over WebSocket
-
-    public GameWebSocketHandler(SimpMessagingTemplate messagingTemplate){
+    public GameWebSocketHandler(SimpMessagingTemplate messagingTemplate, @Lazy TurnService turnService) {
         this.messagingTemplate = messagingTemplate;
+        this.turnService = turnService;
+    }
+    // ==================== Incoming messages ====================
+
+    @MessageMapping("/{lobbyCode}/clue")
+    public void handleClue(@DestinationVariable String lobbyCode, ClueDTO clueDTO) {
+        turnService.submitClue(lobbyCode, clueDTO);
     }
 
+    @MessageMapping("/{lobbyCode}/guess")
+    public void handleGuess(@DestinationVariable String lobbyCode, GuessDTO guessDTO) {
+        turnService.submitGuess(lobbyCode, guessDTO);
+    }
+
+    @MessageMapping("/{lobbyCode}/turn-change")
+    public void handleEndTurn(@DestinationVariable String lobbyCode) {
+        turnService.endTurn(lobbyCode);
+    }
+
+
+    // ==================== Broadcasting ====================
     public void broadcastGameStarted(String lobbyCode, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
         broadcastGameState(lobbyCode, EventType.GAME_STARTED, spymasterBoard, operativeBoard);
+    }
+
+    public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
+        log.info("Broadcasting {} for lobby: {}", eventTypeE, lobbyCode);
+        String eventType = eventTypeE.toString();
+
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent(eventType, lobbyCode, spymasterBoard));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent(eventType, lobbyCode, operativeBoard));
     }
 
     public void broadcastGameRestarting(String lobbyCode, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
         log.info("Broadcasting GAME_RESTARTING for lobby: {}", lobbyCode);
 
-        messagingTemplate.convertAndSend(
-                "/topic/game/" + lobbyCode + "/spymaster",
-                GameEvent.gameRestarting(lobbyCode, spymasterBoard)
-            );
-
-        messagingTemplate.convertAndSend(
-                "/topic/game/" + lobbyCode + "/spy",
-                GameEvent.gameRestarting(lobbyCode, operativeBoard)
-            );
-    }
-    
-    public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
-        log.info("Broadcasting {} for lobby: {}", eventTypeE, lobbyCode);
-
-        String eventType = eventTypeE.toString();
-
-        messagingTemplate.convertAndSend(
-                "/topic/game/" + lobbyCode + "/spymaster",
-                new GameEvent(eventType, lobbyCode, spymasterBoard)
-        );
-
-        messagingTemplate.convertAndSend(
-                "/topic/game/" + lobbyCode + "/spy",
-                GameEvent.gameRestarting(lobbyCode, operativeBoard)
-        );
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", GameEvent.gameRestarting(lobbyCode, spymasterBoard));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", GameEvent.gameRestarting(lobbyCode, operativeBoard));
     }
 
     public void broadcastReturningToLobby(String lobbyCode) {
