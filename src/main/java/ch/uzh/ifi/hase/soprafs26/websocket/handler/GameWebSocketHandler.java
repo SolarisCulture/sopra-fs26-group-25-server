@@ -51,6 +51,18 @@ public class GameWebSocketHandler {
         broadcastGameState(lobbyCode, EventType.GAME_STARTED, spymasterBoard, operativeBoard);
     }
 
+    public void broadcastGameRestarting(String lobbyCode, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
+        log.info("Broadcasting GAME_RESTARTING for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spymaster",
+                GameEvent.gameRestarting(lobbyCode, spymasterBoard)
+        );
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + lobbyCode + "/spy",
+                GameEvent.gameRestarting(lobbyCode, operativeBoard)
+        );
+    }
+
     public void broadcastGameState(String lobbyCode, EventType eventTypeE, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
         log.info("Broadcasting {} for lobby: {}", eventTypeE, lobbyCode);
 
