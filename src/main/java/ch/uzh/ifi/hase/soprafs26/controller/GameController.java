@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.controller;
 
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -71,8 +72,19 @@ public class GameController {
 
     @PostMapping("/api/games/{lobbyCode}/clue")
     @ResponseStatus(HttpStatus.OK)
-    public void publishHint(@PathVariable String lobbyCode, 
-                            @RequestBody ClueDTO clueDTO) {
+    public void publishHint(@PathVariable String lobbyCode, @RequestBody ClueDTO clueDTO) {
         turnService.submitClue(lobbyCode, clueDTO);
+    }
+
+    @PostMapping("/api/games/{lobbyCode}/guess")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void submitGuess(@PathVariable String lobbyCode, @RequestBody GuessDTO guessDTO) {
+        turnService.submitGuess(lobbyCode, guessDTO);
+    }
+
+    @PostMapping("/api/games/{lobbyCode}/end-turn")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void endTurn(@PathVariable String lobbyCode) {
+        turnService.endTurn(lobbyCode, true);
     }
 }

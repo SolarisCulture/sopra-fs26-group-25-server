@@ -28,6 +28,7 @@ public class TimerService {
         for (Game game : activeGames) {
             Turn turn = game.getCurrentTurn();
             if (turn == null || turn.getStartTime() == null) continue;
+            if (game.getLobby() == null || game.getLobby().getSettings() == null) continue;
 
             long elapsed = Duration.between(turn.getStartTime(), LocalDateTime.now()).getSeconds();
             long timeLimit = game.getLobby().getSettings().getTimeLimit();
