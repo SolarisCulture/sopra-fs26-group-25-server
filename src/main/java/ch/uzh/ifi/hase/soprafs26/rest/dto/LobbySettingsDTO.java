@@ -10,6 +10,8 @@ public class LobbySettingsDTO {
     private int timeLimit;
     private int rounds;
     private List<Topic> topics;
+    private Integer spymasterTimeLimit;
+    private Integer spyTimeLimit;
 
     // Getters, Setters
     public Difficulty getDifficulty() { return difficulty; }
@@ -23,4 +25,10 @@ public class LobbySettingsDTO {
 
     public List<Topic> getTopics() { return topics; }
     public void setTopics(List<Topic> topics) { this.topics = topics; }
+
+    public Integer getSpymasterTimeLimit() { return spymasterTimeLimit; }
+    public void setSpymasterTimeLimit(Integer spymasterTimeLimit) { this.spymasterTimeLimit = spymasterTimeLimit; }
+
+    public Integer getSpyTimeLimit() { return spyTimeLimit; }
+    public void setSpyTimeLimit(Integer spyTimeLimit) { this.spyTimeLimit = spyTimeLimit; }
 }
