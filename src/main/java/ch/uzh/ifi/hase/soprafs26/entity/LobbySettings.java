@@ -1,9 +1,13 @@
 package ch.uzh.ifi.hase.soprafs26.entity;
 
-import ch.uzh.ifi.hase.soprafs26.constant.*;
-import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
+
+import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
+import ch.uzh.ifi.hase.soprafs26.constant.Topic;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Embeddable // This can be reused for 'Game Settings' later on => Lobby entity won't get cluttered if we decide to add new settings
 public class LobbySettings {
@@ -12,6 +16,8 @@ public class LobbySettings {
     private Difficulty difficulty = Difficulty.MEDIUM;
 
     private Integer timeLimit = 60; // seconds where 0 = unlimited
+    private Integer spymasterTimeLimit;
+    private Integer spyTimeLimit;
 
     private Integer rounds = 0; // 0 = unlimited
 
@@ -21,11 +27,13 @@ public class LobbySettings {
     private String customWordList; // probably as JSON 
 
 
-    public LobbySettings(){ // Constructor
+    public LobbySettings(){ // Constructor with defaults
         this.difficulty = Difficulty.MEDIUM;
         this.timeLimit = 60;
         this.rounds = 0;
         this.topics = new ArrayList<>();
+        this.spymasterTimeLimit = 60;
+        this.spyTimeLimit = 60;
     }
 
     // Getters, Setters
@@ -43,4 +51,10 @@ public class LobbySettings {
 
     public String getCustomWordList() { return customWordList; }
     public void setCustomWordList(String customWordList) { this.customWordList = customWordList; }
+
+    public Integer getSpymasterTimeLimit() { return spymasterTimeLimit; }
+    public void setSpymasterTimeLimit(Integer spymasterTimeLimit) { this.spymasterTimeLimit = spymasterTimeLimit; }
+
+    public Integer getSpyTimeLimit() { return spyTimeLimit; }
+    public void setSpyTimeLimit(Integer spyTimeLimit) { this.spyTimeLimit = spyTimeLimit; }
 }
