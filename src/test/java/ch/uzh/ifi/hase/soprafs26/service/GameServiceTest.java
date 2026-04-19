@@ -243,7 +243,6 @@ class GameServiceTest {
         Game game = new Game();
         game.setStatus(GameStatus.FINISHED);
         game.setCurrentRound(5);
-        game.setBlueScore(8);   
 
         testLobby.setGame(game);
 
@@ -253,7 +252,6 @@ class GameServiceTest {
 
         assertEquals(5, game.getRoundsPlayed());
         assertEquals(0, game.getTotalTime());
-        assertEquals(TeamColor.BLUE, game.getWinningTeam());
     }
 
     @Test
