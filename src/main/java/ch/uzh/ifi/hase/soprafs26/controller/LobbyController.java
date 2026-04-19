@@ -109,7 +109,7 @@ public class LobbyController {
 		return Collections.singletonMap("id", id);
 	}
 
-	@PutMapping("/api/lobbies/{lobbyCode")
+	@PutMapping("/api/lobbies/{lobbyCode}")
 	@ResponseStatus(HttpStatus.OK)
 	public void updateSettings(@PathVariable("lobbyCode") String lobbyCode, @RequestBody UpdateLobbySettingsRequestDTO request) {
 		if(lobbyCode == null || request == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
