@@ -218,8 +218,6 @@ public class GameService {
 
         game.setRoundsPlayed(game.getCurrentRound());
         game.setTotalTime(0);               // Needs timer implementation --> Has to be implemented yet
-        if (game.getBlueScore() == 8) {game.setWinningTeam(TeamColor.BLUE);}        // Currently only checks if the max score is reached as a win condition --> Depends on how we implement the losing condition of hitting the black card (set other teams score to max?)
-        else {game.setWinningTeam(TeamColor.RED);}
     }
 
     public GameStatisticsDTO getGameStatistics(String lobbyCode) {

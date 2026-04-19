@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
@@ -31,16 +32,19 @@ public class GameWebSocketHandler {
     // ==================== Incoming messages ====================
 
     @MessageMapping("/{lobbyCode}/clue")
+    //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleClue(@DestinationVariable String lobbyCode, ClueDTO clueDTO) {
         turnService.submitClue(lobbyCode, clueDTO);
     }
 
     @MessageMapping("/{lobbyCode}/guess")
+    //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleGuess(@DestinationVariable String lobbyCode, GuessDTO guessDTO) {
         turnService.submitGuess(lobbyCode, guessDTO);
     }
 
     @MessageMapping("/{lobbyCode}/turn-change")
+    //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleEndTurn(@DestinationVariable String lobbyCode) {
         turnService.endTurn(lobbyCode);
     }

@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
+
 @Service
 public class TimerService {
     private final GameRepository gameRepository;
@@ -21,7 +22,8 @@ public class TimerService {
         this.turnService = turnService;
     }
 
-    @Scheduled(fixedRate = 1000) // run method every second
+    // TIMER COMMENTED OUT BECAUSE WE IMPLEMENT THE FRONTEND LOGIC LATER --> CAUSES ISSUES CURRENTLY 
+    // @Scheduled(fixedRate = 1000) // run method every second
     public void checkTimers() {
         List<Game> activeGames = gameRepository.findByStatus(GameStatus.ACTIVE);
 

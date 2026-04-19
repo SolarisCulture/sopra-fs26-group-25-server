@@ -8,7 +8,7 @@ public class GameEvent {
     private String type;
     private String lobbyCode;
     private GameBoardDTO board;
-    private String hint;
+    private String clue;
     private int count;
     private TeamColor team;
     private Long spymasterId;
@@ -33,8 +33,8 @@ public class GameEvent {
     public GameBoardDTO getBoard() { return board; }
     public void setBoard(GameBoardDTO board) { this.board = board; }
 
-    public String getHint() { return hint; }
-    public void setHint(String hint) { this.hint = hint; }
+    public String getClue() { return clue; }
+    public void setClue(String clue) { this.clue = clue; }
 
     public int getCount() { return count; }
     public void setCount(int count) { this.count = count; }

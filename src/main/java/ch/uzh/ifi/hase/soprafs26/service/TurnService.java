@@ -10,10 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import ch.uzh.ifi.hase.soprafs26.constant.EventType;
-import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
-import ch.uzh.ifi.hase.soprafs26.constant.Role;
-import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
 import ch.uzh.ifi.hase.soprafs26.entity.Clue;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Guess;
@@ -67,7 +63,9 @@ public class TurnService {
         }
         turn.setClue(clue);
 
-        turn.setGuessesRemaining(clue.getCount() + 1);
+        boolean unlimited = clueDTO.getCount() == 0;
+        turn.setGuessesRemaining(unlimited ? Integer.MAX_VALUE : clue.getCount() + 1);
+
         turn.setPhase(TurnPhase.SPY_TURN);
         turn.setStartTime(LocalDateTime.now());
 
@@ -76,6 +74,12 @@ public class TurnService {
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
         GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+
+        spymasterView.setClueWord(clue.getWord());
+        spymasterView.setClueCount(clue.getCount());
+        spyView.setClueWord(clue.getWord());
+        spyView.setClueCount(clue.getCount());
+
         gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CLUE_GIVEN, spymasterView, spyView);
     }
 
@@ -144,6 +148,9 @@ public class TurnService {
         }
 
         if (turnEnded && game.getStatus() != GameStatus.FINISHED) {
+            GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+            GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+            gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
             endTurn(lobbyCode);
             return;
         }
