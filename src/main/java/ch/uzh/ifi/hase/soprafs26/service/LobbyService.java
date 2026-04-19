@@ -1,6 +1,7 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -13,9 +14,11 @@ import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.entity.LobbySettings;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.UpdateLobbySettingsRequestDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 
@@ -221,6 +224,47 @@ public class LobbyService {
 
         return savedPlayer.getId();
     }
+
+    public void updateSettings(String lobbyCode, UpdateLobbySettingsRequestDTO request) {
+        Lobby lobby = getLobbyByCode(lobbyCode);
+        
+        LobbySettings settings = lobby.getSettings();
+        // Validate spymaster time limit (0 = unlimited)
+        if(request.getSpymasterTimeLimit() != null) {
+            int val = request.getSpymasterTimeLimit();
+            if(val < 0 || val > 3600) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Spymaster time limit must be between 0 and 3600 seconds");
+            }
+            settings.setSpymasterTimeLimit(val == 0 ? null : val);
+        }
+
+        // Validate spy time limit
+        if(request.getSpyTimeLimit() != null) {
+            int val = request.getSpyTimeLimit();
+            if(val < 0 || val > 3600) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Spy time limit must be between 0 and 3600 seconds");
+            }
+            settings.setSpyTimeLimit(val == 0 ? null : val);
+        }
+
+        // Validate rounds
+        if(request.getRounds() != null) {
+            int val = request.getRounds();
+            if(val < 1 || val > 100) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rounds must be between 1 and 100");
+            }
+            settings.setRounds(val);
+        }
+
+        lobbyRepository.save(lobby);
+        Map<String, Object> settingsData = Map.of(
+            "spymasterTimeLimit", settings.getSpymasterTimeLimit(),
+            "spyTimeLimit", settings.getSpyTimeLimit(),
+            "rounds", settings.getRounds()
+        );
+        lobbyWebSocketHandler.broadcastSettingsUpdated(lobbyCode, settingsData);
+    }
+
     public List<Player> getPlayerList(String lobbyCode) {       // Changed name to getPlayerList because it seems more intuitiv then getLobbyState (which I would think should return the actual LobbyState)
         // Check if lobby exists
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, lobbyDoesNotExistString));

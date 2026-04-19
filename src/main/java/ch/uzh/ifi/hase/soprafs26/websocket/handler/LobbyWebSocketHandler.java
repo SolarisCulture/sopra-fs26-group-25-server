@@ -63,6 +63,12 @@ public class LobbyWebSocketHandler {
         messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyCode, event);
     }
 
+    public void broadcastSettingsUpdated(String lobbyCode, Object settingsData) {
+        LobbyEvent event = LobbyEvent.settingsUpdated(lobbyCode, settingsData);
+        log.info("Broadcasting SETTINGS_UPDATED for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyCode, event);
+    }
+
     @MessageMapping("/lobby/{lobbyCode}/subscribe") // Receive client here if asked to subscribe => run this code
     @SendTo("/topic/lobbies/{lobbyCode}") // Client now subscribed to this lobby
     public LobbyEvent subscribeToLobby(@DestinationVariable String lobbyCode, @Payload SubscribeDTO payload, StompHeaderAccessor accessor){
