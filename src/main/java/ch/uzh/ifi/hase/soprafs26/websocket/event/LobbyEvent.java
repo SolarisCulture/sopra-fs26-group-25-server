@@ -69,4 +69,8 @@ public class LobbyEvent {
     public static LobbyEvent statusUpdated(String lobbyCode, Object lobbyData) {
         return new LobbyEvent("STATUS_UPDATED", lobbyCode, lobbyData);
     }
+
+    public static LobbyEvent settingsUpdated(String lobbyCode, Object settingsData) {
+        return new LobbyEvent("SETTINGS_UPDATED", lobbyCode, settingsData);
+    }
 }

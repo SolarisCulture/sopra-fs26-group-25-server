@@ -20,6 +20,7 @@ import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.LobbyDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.TransferHostRequest;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.UpdateLobbySettingsRequestDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 
@@ -106,5 +107,12 @@ public class LobbyController {
 		if (lobbyCode == null || username == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
 		Long id = lobbyService.joinLobby(lobbyCode, username);
 		return Collections.singletonMap("id", id);
+	}
+
+	@PutMapping("/api/lobbies/{lobbyCode}")
+	@ResponseStatus(HttpStatus.OK)
+	public void updateSettings(@PathVariable("lobbyCode") String lobbyCode, @RequestBody UpdateLobbySettingsRequestDTO request) {
+		if(lobbyCode == null || request == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
+		lobbyService.updateSettings(lobbyCode, request);
 	}
 }

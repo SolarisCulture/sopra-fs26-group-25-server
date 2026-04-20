@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -30,9 +31,11 @@ import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.entity.LobbySettings;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.UpdateLobbySettingsRequestDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 
@@ -608,4 +611,132 @@ public class LobbyServiceTest {
 
 		assertEquals(404, exception.getStatusCode().value());
 	}
+
+    // Update Settings
+    @Test
+    public void updateSettings_validSpymasterTimeLimit_updatesSuccessfully() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        LobbySettings settings = new LobbySettings();
+        lobby.setSettings(settings);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(lobby);
+
+        UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
+        request.setSpymasterTimeLimit(30);
+        request.setSpyTimeLimit(null);
+        request.setRounds(null);
+
+        // When
+        lobbyService.updateSettings("ABC123", request);
+
+        // Then
+        assertThat(settings.getSpymasterTimeLimit()).isEqualTo(30);
+        assertThat(settings.getSpyTimeLimit()).isEqualTo(60); // unchanged default
+        assertThat(settings.getRounds()).isZero(); // unchanged default
+        verify(lobbyWebSocketHandler).broadcastSettingsUpdated(eq("ABC123"), any());
+    }
+
+    @Test
+    public void updateSettings_validOperativeTimeLimit_updatesSuccessfully() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        LobbySettings settings = new LobbySettings();
+        lobby.setSettings(settings);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(lobby);
+
+        UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
+        request.setSpymasterTimeLimit(null);
+        request.setSpyTimeLimit(45);
+        request.setRounds(null);
+
+        // When
+        lobbyService.updateSettings("ABC123", request);
+
+        // Then
+        assertThat(settings.getSpymasterTimeLimit()).isEqualTo(60); // unchanged default
+        assertThat(settings.getSpyTimeLimit()).isEqualTo(45);
+        assertThat(settings.getRounds()).isZero();
+        verify(lobbyWebSocketHandler).broadcastSettingsUpdated(eq("ABC123"), any());
+    }
+
+    @Test
+    public void updateSettings_validRounds_updatesSuccessfully() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        LobbySettings settings = new LobbySettings();
+        lobby.setSettings(settings);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(lobby);
+
+        UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
+        request.setSpymasterTimeLimit(null);
+        request.setSpyTimeLimit(null);
+        request.setRounds(5);
+
+        // When
+        lobbyService.updateSettings("ABC123", request);
+
+        // Then
+        assertThat(settings.getSpymasterTimeLimit()).isEqualTo(60);
+        assertThat(settings.getSpyTimeLimit()).isEqualTo(60);
+        assertThat(settings.getRounds()).isEqualTo(5);
+        verify(lobbyWebSocketHandler).broadcastSettingsUpdated(eq("ABC123"), any());
+    }
+
+    @Test
+    public void updateSettings_spymasterTimeLimitOutOfRange_throwsBadRequest() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+
+        UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
+        request.setSpymasterTimeLimit(4000); // > 3600
+
+        // When/Then
+        assertThrows(ResponseStatusException.class,
+            () -> lobbyService.updateSettings("ABC123", request));
+    }
+
+    @Test
+    public void updateSettings_operativeTimeLimitOutOfRange_throwsBadRequest() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+
+        UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
+        request.setSpyTimeLimit(-10); // negative
+
+        // When/Then
+        assertThrows(ResponseStatusException.class,
+            () -> lobbyService.updateSettings("ABC123", request));
+    }
+
+    @Test
+    public void updateSettings_roundsOutOfRange_throwsBadRequest() {
+        // Given
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode("ABC123");
+        lobby.setHostId(1L);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
+
+        UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
+        request.setRounds(0); // min is 1
+
+        // When/Then
+        assertThrows(ResponseStatusException.class,
+            () -> lobbyService.updateSettings("ABC123", request));
+    }
+
 }

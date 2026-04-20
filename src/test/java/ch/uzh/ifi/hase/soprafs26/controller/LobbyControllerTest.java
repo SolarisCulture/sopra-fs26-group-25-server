@@ -1,11 +1,12 @@
 package ch.uzh.ifi.hase.soprafs26.controller;
 
 import org.junit.jupiter.api.Test;
-import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
-
+import static org.mockito.BDDMockito.willThrow;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -14,11 +15,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,7 +30,9 @@ import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.LobbyDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.TransferHostRequest;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.UpdateLobbySettingsRequestDTO;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
+import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -44,6 +47,12 @@ public class LobbyControllerTest {
 
 	@MockitoBean
 	private LobbyService lobbyService;
+
+    @MockitoBean
+    private LobbyWebSocketHandler lobbyWebSocketHandler;
+
+    @MockitoBean
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 	
 	// Lobby Creation/Retrieval
 	@Test
@@ -246,6 +255,48 @@ public class LobbyControllerTest {
 
 		mockMvc.perform(postRequest).andExpect(status().isBadRequest());
 	}
+
+    // Update Settings
+    @Test
+    public void updateSettings_validRequest_returnsOk() throws Exception {
+        // Given
+        UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
+        request.setSpymasterTimeLimit(30);
+        request.setSpyTimeLimit(45);
+        request.setRounds(5);
+
+        willDoNothing().given(lobbyService).updateSettings(anyString(), any(UpdateLobbySettingsRequestDTO.class));
+
+        // When/Then
+        mockMvc.perform(put("/api/lobbies/ABC123")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void updateSettings_missingRequestBody_returnsBadRequest() throws Exception {
+        // When/Then
+        mockMvc.perform(put("/api/lobbies/ABC123")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void updateSettings_invalidTimeLimit_returnsBadRequest() throws Exception {
+        // Given
+        UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
+        request.setSpymasterTimeLimit(4000); // out of range
+
+        // Stub void method to throw exception
+        willThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST))
+            .given(lobbyService).updateSettings(anyString(), any(UpdateLobbySettingsRequestDTO.class));
+
+        mockMvc.perform(put("/api/lobbies/ABC123")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(request)))
+                .andExpect(status().isBadRequest());
+    }
 
 
     /**
