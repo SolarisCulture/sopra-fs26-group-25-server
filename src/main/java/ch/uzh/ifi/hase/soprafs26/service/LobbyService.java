@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -257,11 +258,11 @@ public class LobbyService {
         }
 
         lobbyRepository.save(lobby);
-        Map<String, Object> settingsData = Map.of(
-            "spymasterTimeLimit", settings.getSpymasterTimeLimit(),
-            "spyTimeLimit", settings.getSpyTimeLimit(),
-            "rounds", settings.getRounds()
-        );
+        Map<String, Object> settingsData = new HashMap<>();
+        settingsData.put("spymasterTimeLimit", settings.getSpymasterTimeLimit());
+        settingsData.put("spyTimeLimit", settings.getSpyTimeLimit());
+        settingsData.put("rounds", settings.getRounds());
+
         lobbyWebSocketHandler.broadcastSettingsUpdated(lobbyCode, settingsData);
     }
 
