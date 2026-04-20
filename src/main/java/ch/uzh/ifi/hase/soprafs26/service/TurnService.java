@@ -137,11 +137,9 @@ public class TurnService {
                     game.setStatus(GameStatus.FINISHED);
                 }
             }
-
             if (turn.getGuessesRemaining() == 0) {
                 turnEnded = true;
             }
-
         } else {
             // Wrong team's card — give them the point, end turn
             if (cardType == CardType.AGENTRED) {
@@ -152,7 +150,25 @@ public class TurnService {
             turnEnded = true;
         }
 
-        if (turnEnded && game.getStatus() != GameStatus.FINISHED) {
+        turnRepository.saveAndFlush(turn);
+
+        /*if (turnEnded && game.getStatus() != GameStatus.FINISHED) {
+            GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+            GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+            gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
+            endTurn(lobbyCode);
+            return;
+        }*/
+
+        if (game.getStatus() == GameStatus.FINISHED) {
+            gameService.calculateGameStatistics(lobbyCode);
+            GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+            GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+            gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.GAME_OVER, spymasterView, spyView);
+            return;
+        }
+
+        if (turnEnded) {
             GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
             GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
             gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
@@ -160,13 +176,11 @@ public class TurnService {
             return;
         }
 
-        turnRepository.saveAndFlush(turn);
-
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
         GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
-        EventType eventType = game.getStatus() == GameStatus.FINISHED ? EventType.GAME_OVER : EventType.CARD_REVEALED;
-        gameWebSocketHandler.broadcastGameState(lobbyCode, eventType, spymasterView, spyView);
+        //EventType eventType = game.getStatus() == GameStatus.FINISHED ? EventType.GAME_OVER : EventType.CARD_REVEALED;
+        gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
     }
 
     public void endTurn(String lobbyCode) {
@@ -194,7 +208,7 @@ public class TurnService {
         nextTurn.setStartTime(LocalDateTime.now());
 
         // Set it as the current turn on the game
-        turnRepository.save(nextTurn);
+        turnRepository.saveAndFlush(nextTurn);
         game.getTurns().add(nextTurn);
         game.setCurrentTurn(nextTurn);
 

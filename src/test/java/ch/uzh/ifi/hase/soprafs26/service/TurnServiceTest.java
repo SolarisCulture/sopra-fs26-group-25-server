@@ -59,11 +59,12 @@ public class TurnServiceTest {
         testLobby.setGame(testGame);
     }
 
+    // CLUE
     @Test
     public void submitClue_validClue_success() {
         // Setup
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
-        when(turnRepository.save(any(Turn.class))).thenReturn(testTurn);
+        //when(turnRepository.save(any(Turn.class))).thenReturn(testTurn);
         when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
         when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
 
@@ -83,7 +84,7 @@ public class TurnServiceTest {
         assertNotNull(testTurn.getStartTime());
 
         // Verify saves and broadcasts happened
-        verify(turnRepository).save(testTurn);
+        verify(turnRepository).saveAndFlush(testTurn);
         verify(gameWebSocketHandler).broadcastGameState(
                 eq("ABC123"), any(), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
@@ -180,6 +181,7 @@ public class TurnServiceTest {
         verify(turnRepository, never()).save(any());
     }
 
+    // GUESS
     private WordCard setupGuessTest(CardType cardType, String word) {
         testTurn.setPhase(TurnPhase.SPY_TURN);
         testTurn.setCurrentTeamColor(TeamColor.RED);
@@ -235,6 +237,9 @@ public class TurnServiceTest {
 
         assertEquals(GameStatus.FINISHED, testGame.getStatus());
         assertEquals(TeamColor.BLUE, testGame.getWinningTeam());
+
+        verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.GAME_OVER), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
 
     @Test
@@ -267,6 +272,10 @@ public class TurnServiceTest {
 
         assertEquals(GameStatus.FINISHED, testGame.getStatus());
         assertEquals(TeamColor.RED, testGame.getWinningTeam());
+
+        verify(gameService).calculateGameStatistics(testLobby.getLobbyCode());
+        verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.GAME_OVER), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
 
     @Test
@@ -281,25 +290,48 @@ public class TurnServiceTest {
     }
 
     @Test
-    public void submitGuess_cardAlreadyRevealed_throwsBadRequest() {
-        WordCard card = setupGuessTest(CardType.AGENTRED, "APPLE");
-        card.setRevealed(true);
+    public void submitGuess_correctGuess_noGuessesRemaining_endsTurn() {
+        setupGuessTest(CardType.AGENTRED, "APPLE");
+        testTurn.setGuessesRemaining(1); // last guess
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> turnService.submitGuess("ABC123", new GuessDTO("APPLE")));
+        turnService.submitGuess("ABC123", new GuessDTO("APPLE"));
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals(1, testGame.getRedScore());
+        assertEquals(0, testTurn.getGuessesRemaining());
+
+        verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.CARD_REVEALED), any(GameBoardDTO.class), any(GameBoardDTO.class));
+        verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.TURN_CHANGED), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
 
     @Test
-    public void submitGuess_wrongPhase_throwsBadRequest() {
-        setupGuessTest(CardType.AGENTRED, "APPLE");
+    public void endTurn_voluntary_duringSpyTurn_success() {
+        testTurn.setPhase(TurnPhase.SPY_TURN);
+        testTurn.setCurrentTeamColor(TeamColor.RED);
+        testGame.setTurns(new ArrayList<>(List.of(testTurn)));
+
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+        when(turnRepository.saveAndFlush(any(Turn.class))).thenAnswer(i -> i.getArgument(0));
+        when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
+        when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
+
+        turnService.endTurn("ABC123", true);
+
+        assertEquals(TeamColor.BLUE, testGame.getCurrentTurn().getCurrentTeamColor());
+        assertEquals(TurnPhase.SPYMASTER_TURN, testGame.getCurrentTurn().getPhase());
+        verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.TURN_CHANGED), any(GameBoardDTO.class), any(GameBoardDTO.class));
+    }
+
+    @Test
+    public void endTurn_voluntary_duringSpymasterTurn_throwsBadRequest() {
         testTurn.setPhase(TurnPhase.SPYMASTER_TURN);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> turnService.submitGuess("ABC123", new GuessDTO("APPLE")));
+                () -> turnService.endTurn("ABC123", true));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
