@@ -61,6 +61,11 @@ public class TurnService {
         } else {
             clue.setCount(clueDTO.getCount());
         }
+        
+        clue.setType(GameEventType.CLUE);       
+        clue.setTimeStamp(LocalDateTime.now());
+        clue.setDescription("Clue: " + clueDTO.getWord() + " (" + clueDTO.getCount() + ")");
+
         turn.setClue(clue);
 
         boolean unlimited = clueDTO.getCount() == 0;
