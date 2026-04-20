@@ -74,7 +74,7 @@ public class TurnService {
         turn.setPhase(TurnPhase.SPY_TURN);
         turn.setStartTime(LocalDateTime.now());
 
-        turnRepository.save(turn);
+        turnRepository.saveAndFlush(turn);
 
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
@@ -160,7 +160,7 @@ public class TurnService {
             return;
         }
 
-        turnRepository.save(turn);
+        turnRepository.saveAndFlush(turn);
 
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
@@ -225,6 +225,8 @@ public class TurnService {
 
     private Turn getCurrentTurn(Game game, TurnPhase expectedPhase) {
         Turn turn = game.getCurrentTurn();
+        System.out.println("GUESS DEBUG - Turn ID: " + turn.getId()
+                + " Phase: " + turn.getPhase());
         if (turn == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No active turn!");
         }
