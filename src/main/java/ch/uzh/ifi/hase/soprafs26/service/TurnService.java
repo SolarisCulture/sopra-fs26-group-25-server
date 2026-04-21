@@ -54,7 +54,7 @@ public class TurnService {
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Clue word is missing");
         }
-        if (clueDTO.getCount() < 0) {
+        if (clueDTO.getCount() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Count should be positive!");
         } else {
             clue.setCount(clueDTO.getCount());
