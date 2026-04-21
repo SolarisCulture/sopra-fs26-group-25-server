@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.controller;
 
+import ch.uzh.ifi.hase.soprafs26.entity.Clue;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.Turn;
@@ -26,12 +27,16 @@ public class DebugController {
 
         Game game = lobby.getGame();
         Turn turn = game.getCurrentTurn();
+        Clue clue = turn != null ? turn.getClue() : null;
         return Map.of(
                 "status", game.getStatus(),
                 "currentTurnPhase", turn != null ? turn.getPhase() : "null",
                 "currentTeam", turn != null ? turn.getCurrentTeamColor() : "null",
                 "redScore", game.getRedScore(),
-                "blueScore", game.getBlueScore()
+                "blueScore", game.getBlueScore(),
+                "clue", clue != null ? clue.getWord() : "null",
+                "clueCount", clue != null ? clue.getCount() : "null",
+                "guesses", turn != null ? turn.getGuesses().size() : 0
         );
     }
 }
