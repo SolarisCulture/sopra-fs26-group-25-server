@@ -1,8 +1,7 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.*;
-import ch.uzh.ifi.hase.soprafs26.entity.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -10,6 +9,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import ch.uzh.ifi.hase.soprafs26.constant.CardType;
+import ch.uzh.ifi.hase.soprafs26.constant.EventType;
+import ch.uzh.ifi.hase.soprafs26.constant.GameEventType;
+import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
+import ch.uzh.ifi.hase.soprafs26.constant.Role;
+import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
 import ch.uzh.ifi.hase.soprafs26.entity.Clue;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Guess;
@@ -22,14 +28,6 @@ import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Optional;
 
 @Service
 @Transactional
@@ -63,7 +61,7 @@ public class TurnService {
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Clue word is missing");
         }
-        if (clueDTO.getCount() < 0) {
+        if (clueDTO.getCount() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Count should be positive!");
         } else {
             clue.setCount(clueDTO.getCount());
@@ -81,7 +79,7 @@ public class TurnService {
         turn.setPhase(TurnPhase.SPY_TURN);
         turn.setStartTime(LocalDateTime.now());
 
-        turnRepository.saveAndFlush(turn);
+        turnRepository.save(turn);
 
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
