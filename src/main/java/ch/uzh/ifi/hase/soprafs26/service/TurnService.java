@@ -47,8 +47,15 @@ public class TurnService {
     }
 
     public void submitClue(String lobbyCode, ClueDTO clueDTO) {
+        System.out.println("---- SUBMIT CLUE ----");
+
         Game game = getActiveGame(lobbyCode);
         Turn turn = getCurrentTurn(game, TurnPhase.SPYMASTER_TURN);
+        System.out.println("Game: " + game);
+        System.out.println("Game ID: " + game.getId());
+        System.out.println("Turn: " + turn);
+        System.out.println("Turn ID: " + turn.getId());
+        System.out.println("Instance: " + System.getenv("GAE_INSTANCE"));
 
         Clue clue = new Clue();
         if (clueDTO.getWord() != null  && !clueDTO.getWord().isEmpty()) {
@@ -89,8 +96,18 @@ public class TurnService {
     }
 
     public void submitGuess(String lobbyCode, GuessDTO guessDTO) {
+        System.out.println("---- MAKE GUESS CALLED ----");
+
+
         Game game = getActiveGame(lobbyCode);
         Turn turn = getCurrentTurn(game, TurnPhase.SPY_TURN);
+
+        System.out.println("Game ID: " + game);
+        System.out.println("Game ID: " + game.getId());
+        System.out.println("Turn: " + turn);
+        System.out.println("Turn ID: " + turn.getId());
+        System.out.println("Time: " + System.currentTimeMillis());
+        System.out.println("Instance: " + System.getenv("GAE_INSTANCE"));
 
         // Find the card
         WordCard wordCard = game.getBoard().findCardByWord(guessDTO.getWord());

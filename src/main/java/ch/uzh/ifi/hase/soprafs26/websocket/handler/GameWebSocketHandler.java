@@ -34,12 +34,14 @@ public class GameWebSocketHandler {
     @MessageMapping("/{lobbyCode}/clue")
     //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleClue(@DestinationVariable String lobbyCode, ClueDTO clueDTO) {
+        System.out.println("Controller received clue");
         turnService.submitClue(lobbyCode, clueDTO);
     }
 
     @MessageMapping("/{lobbyCode}/guess")
     //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleGuess(@DestinationVariable String lobbyCode, GuessDTO guessDTO) {
+        System.out.println("Controller received guess");
         turnService.submitGuess(lobbyCode, guessDTO);
     }
 
