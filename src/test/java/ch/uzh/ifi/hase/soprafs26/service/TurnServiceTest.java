@@ -63,7 +63,7 @@ public class TurnServiceTest {
     public void submitClue_validClue_success() {
         // Setup
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
-        when(turnRepository.save(any(Turn.class))).thenReturn(testTurn);
+        when(turnRepository.saveAndFlush(any(Turn.class))).thenReturn(testTurn);
         when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
         when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
 
@@ -83,7 +83,7 @@ public class TurnServiceTest {
         assertNotNull(testTurn.getStartTime());
 
         // Verify saves and broadcasts happened
-        verify(turnRepository).save(testTurn);
+        verify(turnRepository).saveAndFlush(testTurn);
         verify(gameWebSocketHandler).broadcastGameState(
                 eq("ABC123"), any(), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
