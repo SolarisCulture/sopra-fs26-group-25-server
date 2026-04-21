@@ -1,1 +1,0 @@
-ALTER TABLE game_event DROP CONSTRAINT IF EXISTS constraint_8c;
