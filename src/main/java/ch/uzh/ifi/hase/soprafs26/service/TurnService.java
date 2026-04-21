@@ -72,7 +72,7 @@ public class TurnService {
         turn.setPhase(TurnPhase.SPY_TURN);
         turn.setStartTime(LocalDateTime.now());
 
-        turnRepository.save(turn);
+        turnRepository.saveAndFlush(turn);
 
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
@@ -104,6 +104,9 @@ public class TurnService {
 
         Guess guess = new Guess();
         guess.setWordCard(wordCard);
+        guess.setType(GameEventType.GUESS);
+        guess.setTimeStamp(LocalDateTime.now());
+        guess.setDescription("Guessed: " + wordCard.getWord());
         turn.getGuesses().add(guess);
         turn.setGuessesRemaining(turn.getGuessesRemaining()- 1);
 
@@ -150,7 +153,15 @@ public class TurnService {
             turnEnded = true;
         }
 
-        if (turnEnded && game.getStatus() != GameStatus.FINISHED) {
+        if (game.getStatus() == GameStatus.FINISHED) {
+            gameService.calculateGameStatistics(lobbyCode);
+            GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+            GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+            gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.GAME_OVER, spymasterView, spyView);
+            return;
+        }
+
+        if (turnEnded) {
             GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
             GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
             gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
@@ -158,13 +169,21 @@ public class TurnService {
             return;
         }
 
+        /*if (turnEnded && game.getStatus() != GameStatus.FINISHED) {
+            GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+            GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+            gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
+            endTurn(lobbyCode);
+            return;
+        }*/
+
         turnRepository.saveAndFlush(turn);
 
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
         GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
-        EventType eventType = game.getStatus() == GameStatus.FINISHED ? EventType.GAME_OVER : EventType.CARD_REVEALED;
-        gameWebSocketHandler.broadcastGameState(lobbyCode, eventType, spymasterView, spyView);
+        //EventType eventType = game.getStatus() == GameStatus.FINISHED ? EventType.GAME_OVER : EventType.CARD_REVEALED;
+        gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
     }
 
     public void endTurn(String lobbyCode) {
@@ -192,7 +211,7 @@ public class TurnService {
         nextTurn.setStartTime(LocalDateTime.now());
 
         // Set it as the current turn on the game
-        turnRepository.save(nextTurn);
+        turnRepository.saveAndFlush(nextTurn);
         game.getTurns().add(nextTurn);
         game.setCurrentTurn(nextTurn);
 
@@ -223,8 +242,7 @@ public class TurnService {
 
     private Turn getCurrentTurn(Game game, TurnPhase expectedPhase) {
         Turn turn = game.getCurrentTurn();
-        System.out.println("GUESS DEBUG - Turn ID: " + turn.getId()
-                + " Phase: " + turn.getPhase());
+        //System.out.println("GUESS DEBUG - Turn ID: " + turn.getId() + " Phase: " + turn.getPhase());
         if (turn == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No active turn!");
         }
