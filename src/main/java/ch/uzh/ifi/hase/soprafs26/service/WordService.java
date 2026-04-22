@@ -41,7 +41,7 @@ public class WordService {
     }
 
     public List<String> getWordsForGame(Difficulty difficulty) {
-        try {
+        /*try {
             int diffLevel = mapDifficulty(difficulty);
             Set<String> words = new HashSet<>();
 
@@ -63,7 +63,9 @@ public class WordService {
             // API failed, use fallback
             log.warn("API failed, using fallback words: {}", e.getMessage());
             return getFallbackWords();
-        }
+        }*/
+
+        return getFallbackWordsFromFile();
     }
 
     private int mapDifficulty(Difficulty difficulty) {
