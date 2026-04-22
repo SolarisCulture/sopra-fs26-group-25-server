@@ -112,6 +112,7 @@ public class LobbyController {
 	@PutMapping("/api/lobbies/{lobbyCode}")
 	@ResponseStatus(HttpStatus.OK)
 	public void updateSettings(@PathVariable("lobbyCode") String lobbyCode, @RequestBody UpdateLobbySettingsRequestDTO request) {
+		System.out.println("Rounds in request (Controller): " + request.getRounds());
 		if(lobbyCode == null || request == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
 		lobbyService.updateSettings(lobbyCode, request);
 	}

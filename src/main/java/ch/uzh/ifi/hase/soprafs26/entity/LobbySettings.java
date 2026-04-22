@@ -15,7 +15,7 @@ public class LobbySettings {
     @Enumerated(EnumType.STRING)
     private Difficulty difficulty = Difficulty.MEDIUM;
 
-    private Integer timeLimit = 60; // seconds where 0 = unlimited
+    private Integer timeLimit = 0; // seconds where 0 = unlimited
     private Integer spymasterTimeLimit;
     private Integer spyTimeLimit;
 
@@ -29,11 +29,11 @@ public class LobbySettings {
 
     public LobbySettings(){ // Constructor with defaults
         this.difficulty = Difficulty.MEDIUM;
-        this.timeLimit = 60;
+        this.timeLimit = 0;
         this.rounds = 0;
         this.topics = new ArrayList<>();
-        this.spymasterTimeLimit = 60;
-        this.spyTimeLimit = 60;
+        this.spymasterTimeLimit = 0;
+        this.spyTimeLimit = 0;
     }
 
     // Getters, Setters

@@ -249,10 +249,11 @@ public class LobbyService {
         }
 
         // Validate rounds
+        System.out.println("Rounds in request: " + request.getRounds());
         if(request.getRounds() != null) {
             int val = request.getRounds();
-            if(val < 1 || val > 100) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rounds must be between 1 and 100");
+            if(val < 1 || val > 1000) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rounds must be between 1 and 1000");
             }
             settings.setRounds(val);
         }
@@ -262,6 +263,8 @@ public class LobbyService {
         settingsData.put("spymasterTimeLimit", settings.getSpymasterTimeLimit());
         settingsData.put("spyTimeLimit", settings.getSpyTimeLimit());
         settingsData.put("rounds", settings.getRounds());
+
+        System.out.println("Rounds in hashmap: " + settings.getRounds());
 
         lobbyWebSocketHandler.broadcastSettingsUpdated(lobbyCode, settingsData);
     }
