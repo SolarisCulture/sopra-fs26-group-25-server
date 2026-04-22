@@ -143,7 +143,7 @@ class GameWebSocketHandlerTest {
         GameEvent event = eventCaptor.getValue();
 
         assertEquals(lobbyCode, event.getLobbyCode());
-        assertEquals("RETURNING_TO_LOBBY", event.getType());
+        assertEquals("ReturningToLobby", event.getType());
     }
 
 

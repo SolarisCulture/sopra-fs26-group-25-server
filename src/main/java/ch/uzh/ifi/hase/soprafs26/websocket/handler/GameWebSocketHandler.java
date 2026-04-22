@@ -91,7 +91,8 @@ public class GameWebSocketHandler {
 
     public void broadcastReturningToLobby(String lobbyCode) {
         log.info("Broadcasting RETURNING_TO_LOBBY for lobby: {}", lobbyCode);
-        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode, GameEvent.returningToLobby(lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", GameEvent.returningToLobby(lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", GameEvent.returningToLobby(lobbyCode));
     }
 
 }

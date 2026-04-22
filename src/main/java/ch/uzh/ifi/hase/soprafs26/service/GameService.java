@@ -85,6 +85,8 @@ public class GameService {
         game.setRedTotal(startingTeam == TeamColor.RED ? 9 : 8);
         game.setBlueTotal(startingTeam == TeamColor.BLUE ? 9 : 8);
 
+        game = gameRepository.save(game);
+
         // 8. Create first turn
         Turn firstTurn = new Turn();
         firstTurn.setGame(game);
@@ -95,15 +97,17 @@ public class GameService {
         firstTurn.setStartTime(LocalDateTime.now());
         firstTurn.setGuesses(new ArrayList<>());
 
-        turnRepository.save(firstTurn);
+        firstTurn = turnRepository.save(firstTurn);
 
         game.setCurrentTurn(firstTurn);
         game.setTurns(new ArrayList<>(List.of(firstTurn)));
 
-        gameRepository.save(game);
+        game = gameRepository.save(game);
 
         lobby.setGame(game);
         game.setLobby(lobby);
+
+        game = gameRepository.save(game);
 
         lobbyRepository.save(lobby);
 
@@ -119,7 +123,8 @@ public class GameService {
         }
         Lobby lobby = lobbyOptional.get();
 
-        if (lobby.getGame() != null && lobby.getGame().getStatus() == GameStatus.ACTIVE) {
+        if (lobby.getGame() != null) {
+            System.out.println("IT GOT INTO IF STATEMENT (CONFLICT) IN STARTGAME!");
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game already in progress");
         }
 
@@ -144,6 +149,10 @@ public class GameService {
         }
         Lobby lobby = lobbyOptional.get();
         Game game = lobby.getGame();
+
+        if (game == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No active game");
+        }
 
         return buildBoardDTO(game, role);
     }
@@ -248,13 +257,16 @@ public class GameService {
         }
         Lobby lobby = lobbyOptional.get();
 
+        Game oldGame = lobby.getGame();
+
         // Maybe remove later/add check for .PAUSED for restarting game during pause
-        if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
+        if (oldGame == null || oldGame.getStatus() != GameStatus.FINISHED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished yet!");
         }
 
-        lobby.getGame().setStatus(GameStatus.ARCHIVED);
-        gameRepository.save(lobby.getGame());
+        oldGame.setStatus(GameStatus.ARCHIVED);
+        lobby.setGame(null);
+        lobbyRepository.save(lobby);
 
         Game game = createNewGame(lobby);
 
@@ -276,14 +288,18 @@ public class GameService {
 
         // Maybe remove later/add check for .PAUSED for restarting game during pause
         if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
+            System.out.println("IT GOT INTO THE IF STATEMENT IN BACKTOLOBBY!");
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished yet!");
         }
 
         lobby.getGame().setStatus(GameStatus.ARCHIVED);
         lobby.setLobbyStatus(LobbyStatus.WAITING);
 
+        lobby.setGame(null);
+
+        System.out.println("LobbyStatus (after): " + lobby.getLobbyStatus());
+
         lobbyRepository.save(lobby);
-        gameRepository.save(lobby.getGame());
 
         gameWebSocketHandler.broadcastReturningToLobby(lobbyCode);
     }

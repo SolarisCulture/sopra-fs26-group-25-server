@@ -26,6 +26,9 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -109,9 +112,9 @@ class GameServiceTest {
         assertTrue(game.getBoard().getCards().stream().noneMatch(WordCard::isRevealed));
 
         // Verify save was called
-        verify(lobbyRepository).save(any(Lobby.class));
-        verify(gameRepository).save(any(Game.class));
-        verify(turnRepository).save(any(Turn.class));
+        verify(lobbyRepository, atLeastOnce()).save(any(Lobby.class));
+        verify(gameRepository, atLeast(2)).save(any(Game.class));
+        verify(turnRepository, times(1)).save(any(Turn.class));
     }
 
     @Test
@@ -301,21 +304,51 @@ class GameServiceTest {
 
     @Test
     public void restartGame_validFinishedGame_recreatesGame() {
-
         Game finishedGame = new Game();
+        finishedGame.setId(99L);
         finishedGame.setStatus(GameStatus.FINISHED);
         testLobby.setGame(finishedGame);
 
         when(lobbyRepository.findByLobbyCode(any()))
-            .thenReturn(Optional.of(testLobby));
+                .thenReturn(Optional.of(testLobby));
 
-        // Mock the words for the game (else IndexOutOfBounds)
-        when(wordService.getWordsForGame(testLobby.getSettings().getDifficulty())).thenReturn(IntStream.range(0, 25).mapToObj(i -> "word" + i).toList());
+        when(wordService.getWordsForGame(testLobby.getSettings().getDifficulty()))
+                .thenReturn(IntStream.range(0, 25).mapToObj(i -> "word" + i).toList());
+
+        when(gameRepository.save(any(Game.class))).thenAnswer(invocation -> {
+            Game g = invocation.getArgument(0);
+            if (g.getId() == null) {
+                g.setId(1L);
+            }
+            return g;
+        });
+
+        when(turnRepository.save(any(Turn.class))).thenAnswer(invocation -> {
+            Turn t = invocation.getArgument(0);
+            if (t.getId() == null) {
+                t.setId(1L);
+            }
+            return t;
+        });
+
+        when(lobbyRepository.save(any(Lobby.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Game result = gameService.restartGame(testLobby.getLobbyCode());
 
         assertNotNull(result);
         assertEquals(GameStatus.ACTIVE, result.getStatus());
+        assertNotNull(result.getBoard());
+        assertEquals(25, result.getBoard().getCards().size());
+        assertNotNull(result.getCurrentTurn());
+        assertEquals(TurnPhase.SPYMASTER_TURN, result.getCurrentTurn().getPhase());
+
+        assertEquals(GameStatus.ARCHIVED, finishedGame.getStatus());
+        assertSame(result, testLobby.getGame());
+
+        verify(lobbyRepository, atLeastOnce()).save(any(Lobby.class));
+        verify(gameRepository, atLeast(2)).save(any(Game.class));
+        verify(turnRepository, times(1)).save(any(Turn.class));
+        verify(gameWebSocketHandler).broadcastGameRestarting(eq(testLobby.getLobbyCode()), any(), any());
     }
 
     @Test

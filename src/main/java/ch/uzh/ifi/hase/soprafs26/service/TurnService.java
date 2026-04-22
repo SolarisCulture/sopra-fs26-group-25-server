@@ -147,10 +147,19 @@ public class TurnService {
             // Wrong team's card — give them the point, end turn
             if (cardType == CardType.AGENTRED) {
                 game.setRedScore(game.getRedScore() + 1);
+                turnEnded = true;
+                if (game.getRedScore() == game.getRedTotal()) {
+                    game.setWinningTeam(TeamColor.RED);
+                    game.setStatus(GameStatus.FINISHED);
+                }
             } else {
                 game.setBlueScore(game.getBlueScore() + 1);
+                turnEnded = true;
+                if (game.getBlueScore() == game.getBlueTotal()) {
+                    game.setWinningTeam(TeamColor.BLUE);
+                    game.setStatus(GameStatus.FINISHED);
+                }
             }
-            turnEnded = true;
         }
 
         if (game.getStatus() == GameStatus.FINISHED) {

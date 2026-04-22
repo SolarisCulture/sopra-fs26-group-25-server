@@ -38,7 +38,7 @@ public class Game {
     @Enumerated(EnumType.STRING)
     private TeamColor startingTeam;
 
-    @OneToMany(mappedBy = "game")
+    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Turn> turns;
 
     // to know which turn is currently active

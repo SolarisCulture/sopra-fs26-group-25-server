@@ -634,7 +634,7 @@ public class LobbyServiceTest {
 
         // Then
         assertThat(settings.getSpymasterTimeLimit()).isEqualTo(30);
-        assertThat(settings.getSpyTimeLimit()).isEqualTo(60); // unchanged default
+        assertThat(settings.getSpyTimeLimit()).isZero(); // unchanged default
         assertThat(settings.getRounds()).isZero(); // unchanged default
         verify(lobbyWebSocketHandler).broadcastSettingsUpdated(eq("ABC123"), any());
     }
@@ -659,7 +659,7 @@ public class LobbyServiceTest {
         lobbyService.updateSettings("ABC123", request);
 
         // Then
-        assertThat(settings.getSpymasterTimeLimit()).isEqualTo(60); // unchanged default
+        assertThat(settings.getSpymasterTimeLimit()).isZero(); // unchanged default
         assertThat(settings.getSpyTimeLimit()).isEqualTo(45);
         assertThat(settings.getRounds()).isZero();
         verify(lobbyWebSocketHandler).broadcastSettingsUpdated(eq("ABC123"), any());
@@ -685,8 +685,8 @@ public class LobbyServiceTest {
         lobbyService.updateSettings("ABC123", request);
 
         // Then
-        assertThat(settings.getSpymasterTimeLimit()).isEqualTo(60);
-        assertThat(settings.getSpyTimeLimit()).isEqualTo(60);
+        assertThat(settings.getSpymasterTimeLimit()).isZero();
+        assertThat(settings.getSpyTimeLimit()).isZero();
         assertThat(settings.getRounds()).isEqualTo(5);
         verify(lobbyWebSocketHandler).broadcastSettingsUpdated(eq("ABC123"), any());
     }

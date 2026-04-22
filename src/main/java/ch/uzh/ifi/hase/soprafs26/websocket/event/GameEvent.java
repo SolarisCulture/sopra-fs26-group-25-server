@@ -51,12 +51,13 @@ public class GameEvent {
     }
 
     public static GameEvent gameRestarting(String lobbyCode, GameBoardDTO board) {
-        return new GameEvent("GAME_RESTARTING", lobbyCode, board);
+        return new GameEvent("GameRestarting", lobbyCode, board);
     }
 
     public static GameEvent returningToLobby(String lobbyCode) {
-        return new GameEvent("RETURNING_TO_LOBBY", lobbyCode);
+        return new GameEvent("ReturningToLobby", lobbyCode);
     }
+    
     public static GameEvent clueGiven(String lobbyCode, GameBoardDTO board){
         return new GameEvent("CLUE_GIVEN", lobbyCode, board);
     }
