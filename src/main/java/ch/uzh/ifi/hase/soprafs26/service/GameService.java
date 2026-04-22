@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +24,7 @@ import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.TurnRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueHistoryEntryDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
@@ -379,6 +381,25 @@ public class GameService {
         if (role == Role.SPYMASTER) {
             boardDTO.setKeyCard(keyCard);
         }
+
+        List<ClueHistoryEntryDTO> clueHistory = new ArrayList<>();
+
+        if (game.getTurns() != null) {
+            List<Turn> sortedTurns = new ArrayList<>(game.getTurns());
+            sortedTurns.sort(Comparator.comparing(Turn::getId).reversed());
+
+            for (Turn turn : sortedTurns) {
+                if (turn.getClue() != null) {
+                    ClueHistoryEntryDTO entry = new ClueHistoryEntryDTO();
+                    entry.setWord(turn.getClue().getWord());
+                    entry.setCount(turn.getClue().getCount());
+                    entry.setTeam(turn.getCurrentTeamColor().name().toLowerCase());
+                    clueHistory.add(entry);
+                }
+}
+        }
+
+        boardDTO.setClueHistory(clueHistory);
 
         return boardDTO;
     }

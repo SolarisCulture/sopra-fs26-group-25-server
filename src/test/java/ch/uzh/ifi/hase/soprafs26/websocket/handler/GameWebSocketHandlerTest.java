@@ -18,6 +18,8 @@ import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -136,7 +138,11 @@ class GameWebSocketHandlerTest {
         ArgumentCaptor<GameEvent> eventCaptor = ArgumentCaptor.forClass(GameEvent.class);
 
         verify(messagingTemplate, times(1)).convertAndSend(
-                eq("/topic/game/" + lobbyCode),
+                eq("/topic/game/" + lobbyCode + "/spymaster"),
+                eventCaptor.capture()
+        );
+        verify(messagingTemplate, times(1)).convertAndSend(
+                eq("/topic/game/" + lobbyCode + "/spy"),
                 eventCaptor.capture()
         );
 

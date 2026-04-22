@@ -19,6 +19,7 @@ public class GameBoardDTO {
 
     private List<CardDTO> cards;
     private List<CardType> keyCard;
+    private List<ClueHistoryEntryDTO> clueHistory;
 
     // Turn
     private TurnPhase currentPhase;
@@ -78,4 +79,7 @@ public class GameBoardDTO {
 
     public int getClueCount() { return clueCount; }
     public void setClueCount(int clueCount) {  this.clueCount = clueCount; }
+
+    public List<ClueHistoryEntryDTO> getClueHistory() { return clueHistory; }
+    public void setClueHistory(List<ClueHistoryEntryDTO> clueHistory) { this.clueHistory = clueHistory; }
 }
