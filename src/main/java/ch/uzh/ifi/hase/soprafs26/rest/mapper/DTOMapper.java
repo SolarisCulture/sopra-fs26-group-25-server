@@ -5,11 +5,8 @@ import org.mapstruct.factory.Mappers;
 
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
-import ch.uzh.ifi.hase.soprafs26.entity.User;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.LobbyDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.UserGetDTO;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.UserPostDTO;
 
 /**
  * DTOMapper
@@ -26,16 +23,6 @@ import ch.uzh.ifi.hase.soprafs26.rest.dto.UserPostDTO;
 public interface DTOMapper {
 
 	DTOMapper INSTANCE = Mappers.getMapper(DTOMapper.class);
-
-	@Mapping(source = "name", target = "name")
-	@Mapping(source = "username", target = "username")
-	User convertUserPostDTOtoEntity(UserPostDTO userPostDTO);
-
-	@Mapping(source = "id", target = "id")
-	@Mapping(source = "name", target = "name")
-	@Mapping(source = "username", target = "username")
-	@Mapping(source = "status", target = "status")
-	UserGetDTO convertEntityToUserGetDTO(User user);
 
 	// Player Mappings
     @Mapping(source = "id", target = "id")
