@@ -35,6 +35,7 @@ public class GameServiceIntegrationTest {
     public void setup() {
         testLobby = new Lobby();
         testLobby.setHostId(1L);
+        testLobby.getSettings().setTimeLimit(60);
         testLobby = lobbyRepository.save(testLobby);
     }
 
@@ -127,10 +128,9 @@ public class GameServiceIntegrationTest {
         // Start game
         Game game = gameService.startGame(testLobby.getLobbyCode());
 
-        //Not Implemented yet
         // Verify the timer info is in the board DTO
-        //GameBoardDTO board = gameService.getBoard(testLobby.getLobbyCode(), Role.SPYMASTER);
-        //assertTrue(board.getRemainingTimeSeconds() > 0);
+        GameBoardDTO board = gameService.getBoard(testLobby.getLobbyCode(), Role.SPYMASTER);
+        assertTrue(board.getRemainingTimeSeconds() > 0);
 
         // Spymaster gives clue
         ClueDTO clue = new ClueDTO();
