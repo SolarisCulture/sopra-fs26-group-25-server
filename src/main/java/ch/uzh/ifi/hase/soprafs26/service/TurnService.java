@@ -60,8 +60,8 @@ public class TurnService {
             clue.setCount(clueDTO.getCount());
         }
         
-        clue.setType(GameEventType.CLUE);       
-        clue.setTimeStamp(LocalDateTime.now());
+        //clue.setType(GameEventType.CLUE);
+        //clue.setTimeStamp(LocalDateTime.now());
         clue.setDescription("Clue: " + clueDTO.getWord() + " (" + clueDTO.getCount() + ")");
 
         turn.setClue(clue);
@@ -104,8 +104,8 @@ public class TurnService {
 
         Guess guess = new Guess();
         guess.setWordCard(wordCard);
-        guess.setType(GameEventType.GUESS);
-        guess.setTimeStamp(LocalDateTime.now());
+        //guess.setType(GameEventType.GUESS);
+        //guess.setTimeStamp(LocalDateTime.now());
         guess.setDescription("Guessed: " + wordCard.getWord());
         turn.getGuesses().add(guess);
         turn.setGuessesRemaining(turn.getGuessesRemaining()- 1);
