@@ -12,6 +12,7 @@ public class GameEvent {
     private int count;
     private TeamColor team;
     private Long spymasterId;
+    private Long timer;
 
     public GameEvent(String type, String lobbyCode) {
         this.type = type;
@@ -22,6 +23,12 @@ public class GameEvent {
         this.type = type;
         this.lobbyCode = lobbyCode;
         this.board = board;
+    }
+
+    public GameEvent(String type, String lobbyCode, Long timer) {
+        this.type = type;
+        this.lobbyCode = lobbyCode;
+        this.timer = timer;
     }
 
     public String getType() { return type; }
@@ -44,6 +51,9 @@ public class GameEvent {
 
     public Long getSpymasterId() { return spymasterId; }
     public void setSpymasterId(Long spymasterId) { this.spymasterId = spymasterId; }
+
+    public Long getTimer() { return timer; }
+    public void setTimer(Long timer) {this.timer = timer;}
 
     // Factory methods for convenience
     public static GameEvent gameStarted(String lobbyCode, GameBoardDTO board){
@@ -74,4 +84,7 @@ public class GameEvent {
         return new GameEvent("BOARD_REGENERATED", lobbyCode, board);
     }
 
+    public static GameEvent timerUpdate(String lobbyCode, Long timer ){
+        return new GameEvent("TIMER_UPDATE", lobbyCode, timer);
+    }
 }

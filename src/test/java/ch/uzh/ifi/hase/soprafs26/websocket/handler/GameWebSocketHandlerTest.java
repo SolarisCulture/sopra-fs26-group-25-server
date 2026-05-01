@@ -152,5 +152,26 @@ class GameWebSocketHandlerTest {
         assertEquals("ReturningToLobby", event.getType());
     }
 
+    @Test
+    void broadcastTimerUpdate_shouldSendToCorrectTopic() {
+        // Given
+        String lobbyCode = "ABC123";
+        Long timer = 10L;
+
+        // When
+        gameWebSocketHandler.broadcastTimer(lobbyCode, timer);
+
+        // Then
+        ArgumentCaptor<GameEvent> eventCaptor = ArgumentCaptor.forClass(GameEvent.class);
+
+        verify(messagingTemplate, times(1)).convertAndSend(eq("/topic/game/" + lobbyCode + "/spymaster"),eventCaptor.capture());
+        verify(messagingTemplate, times(1)).convertAndSend(eq("/topic/game/" + lobbyCode + "/spy"),eventCaptor.capture());
+
+        GameEvent event = eventCaptor.getValue();
+
+        assertEquals(lobbyCode, event.getLobbyCode());
+        assertEquals("TIMER_UPDATE", event.getType());
+        assertEquals(10L, event.getTimer());
+    }
 
 }

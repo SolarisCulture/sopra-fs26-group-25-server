@@ -249,7 +249,6 @@ public class LobbyService {
         }
 
         // Validate rounds
-        System.out.println("Rounds in request: " + request.getRounds());
         if(request.getRounds() != null) {
             int val = request.getRounds();
             if(val < 1 || val > 1000) {
@@ -263,8 +262,6 @@ public class LobbyService {
         settingsData.put("spymasterTimeLimit", settings.getSpymasterTimeLimit());
         settingsData.put("spyTimeLimit", settings.getSpyTimeLimit());
         settingsData.put("rounds", settings.getRounds());
-
-        System.out.println("Rounds in hashmap: " + settings.getRounds());
 
         lobbyWebSocketHandler.broadcastSettingsUpdated(lobbyCode, settingsData);
     }
