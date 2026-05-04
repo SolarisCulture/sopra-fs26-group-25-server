@@ -95,4 +95,9 @@ public class GameWebSocketHandler {
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", GameEvent.returningToLobby(lobbyCode));
     }
 
+    public void broadcastTimer(String lobbyCode, Long timer) {
+        log.info("Broadcasting TIMER_UPDATE for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", GameEvent.timerUpdate(lobbyCode, timer));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", GameEvent.timerUpdate(lobbyCode, timer));
+    }
 }
