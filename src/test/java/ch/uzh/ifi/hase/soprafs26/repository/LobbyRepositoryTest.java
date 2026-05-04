@@ -1,23 +1,32 @@
 package ch.uzh.ifi.hase.soprafs26.repository;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.List;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
 
+import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
+import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.constant.Topic;
+import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
+import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.entity.LobbySettings;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
+import ch.uzh.ifi.hase.soprafs26.entity.Turn;
 
 @DataJpaTest
 public class LobbyRepositoryTest {
@@ -73,6 +82,79 @@ public class LobbyRepositoryTest {
         entityManager.flush();
 
         assertTrue(lobbyRepository.existsByLobbyCode(testLobby.getLobbyCode()));
+    }
+
+    @Test
+    public void lobbyCode_unique_constraint_throwsException() { // TODO: Fails due to ConstraintViolationException
+        Lobby lobby1 = new Lobby();
+        lobby1.setLobbyCode("ABC123");
+        lobby1.setHostId(1L);
+        entityManager.persistAndFlush(lobby1);
+
+        Lobby lobby2 = new Lobby();
+        lobby2.setLobbyCode("ABC123"); // duplicate
+        lobby2.setHostId(2L);
+
+        assertThrows(DataIntegrityViolationException.class, () -> {
+            entityManager.persistAndFlush(lobby2);
+        });
+    }
+
+    @Test
+    public void deleteLobby_cascadesOrphanRemovalToGame() { // TODO: Fails due to TransientPropertyValueException
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode("DEL123");
+        lobby.setHostId(1L);
+
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        lobby.setGame(game);
+        game.setLobby(lobby);
+
+        Turn turn = new Turn();
+        turn.setGame(game);
+        game.setCurrentTurn(turn);
+        turn.setPhase(TurnPhase.SPYMASTER_TURN);
+
+        entityManager.persistAndFlush(lobby);
+        Long lobbyId = lobby.getId();
+        Long gameId = game.getId();
+
+        // Ensure game exists
+        assertNotNull(entityManager.find(Game.class, gameId));
+
+        // Delete lobby
+        entityManager.remove(lobby);
+        entityManager.flush();
+
+        assertNull(entityManager.find(Lobby.class, lobbyId));
+        assertNull(entityManager.find(Game.class, gameId)); // Game should be removed by orphanRemoval
+    }
+
+    @Test
+    public void lobbySettings_embedded_persistsAndLoads() {
+        Lobby lobby = new Lobby();
+        lobby.setLobbyCode("SET123");
+        lobby.setHostId(1L);
+
+        LobbySettings settings = lobby.getSettings();
+        settings.setDifficulty(Difficulty.HARD);
+        settings.setSpymasterTimeLimit(45);
+        settings.setSpyTimeLimit(30);
+        settings.setRounds(3);
+        settings.setTopics(List.of(Topic.ANIMALS, Topic.SPORTS));
+
+        entityManager.persistAndFlush(lobby);
+        Long id = lobby.getId();
+
+        entityManager.clear();
+
+        Lobby loaded = entityManager.find(Lobby.class, id);
+        assertEquals(Difficulty.HARD, loaded.getSettings().getDifficulty());
+        assertEquals(45, loaded.getSettings().getSpymasterTimeLimit());
+        assertEquals(30, loaded.getSettings().getSpyTimeLimit());
+        assertEquals(3, loaded.getSettings().getRounds());
+        assertEquals(List.of(Topic.ANIMALS, Topic.SPORTS), loaded.getSettings().getTopics());
     }
 }
 
