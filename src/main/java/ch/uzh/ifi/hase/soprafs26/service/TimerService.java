@@ -3,6 +3,7 @@ package ch.uzh.ifi.hase.soprafs26.service;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
+import ch.uzh.ifi.hase.soprafs26.entity.GameTimer;
 import ch.uzh.ifi.hase.soprafs26.entity.Turn;
 import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
@@ -10,16 +11,20 @@ import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.Duration; 
 import java.util.List;
-
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class TimerService {
     private final GameRepository gameRepository;
     private final TurnService turnService;
     private final GameWebSocketHandler gameWebSocketHandler;
+    
+    // Store timers in memory instead of querying database every second
+    private final Map<String, GameTimer> activeTimers = new ConcurrentHashMap<>();
 
     public TimerService(GameRepository gameRepository, TurnService turnService, GameWebSocketHandler gameWebSocketHandler) {
         this.gameRepository = gameRepository;
@@ -27,54 +32,83 @@ public class TimerService {
         this.gameWebSocketHandler = gameWebSocketHandler;
     }
 
-    //@Scheduled(fixedRate = 1000) // run method every second
+    // Call this when a turn starts
+    public void startTimer(String lobbyCode, long timeLimitSeconds) {
+        if (timeLimitSeconds > 0) {
+            activeTimers.put(lobbyCode, new GameTimer(timeLimitSeconds));
+        }
+    }
+    
+    // Call this when a turn ends early
+    public void stopTimer(String lobbyCode) {
+        activeTimers.remove(lobbyCode);
+    }
+    
+    // Get current remaining time (for UI sync)
+    public long getRemainingSeconds(String lobbyCode) {
+        GameTimer timer = activeTimers.get(lobbyCode);
+        if (timer == null) return 0;
+        return timer.getRemainingSeconds(LocalDateTime.now());
+    }
+
+    @Scheduled(fixedRate = 1000) // Still every second - now fast!
     public void checkTimers() {
-        List<Game> activeGames = gameRepository.findByStatus(GameStatus.ACTIVE);
+        if (activeTimers.isEmpty()) return; // Nothing to do
+        
         LocalDateTime now = LocalDateTime.now();
-
-        for (Game game : activeGames) {
-            Turn turn = game.getCurrentTurn();
-            if (turn == null || turn.getStartTime() == null) continue;
-            if (game.getLobby() == null || game.getLobby().getSettings() == null) continue;
-
-            // if the timeLimit is 0 for this phase then ignore --> no limit
-            Long timeLimit = getTimeLimitForPhase(game);
-            if (timeLimit == null || timeLimit == 0) continue;
-
-            long remainingSeconds = calculateRemainingSeconds(turn.getStartTime(), timeLimit, now);
-            String lobbyCode = game.getLobby().getLobbyCode();
-
+        
+        // Iterate over in-memory timers - NO DATABASE QUERIES!
+        for (Map.Entry<String, GameTimer> entry : activeTimers.entrySet()) {
+            String lobbyCode = entry.getKey();
+            GameTimer timer = entry.getValue();
+            
+            long remainingSeconds = timer.getRemainingSeconds(now);
+            
+            // Send WebSocket update (make this async if needed)
             gameWebSocketHandler.broadcastTimer(lobbyCode, remainingSeconds);
-
+            
             if (remainingSeconds == 0) {
+                // Time's up - remove timer and end the turn
+                activeTimers.remove(lobbyCode);
                 turnService.endTurn(lobbyCode);
             }
         }
     }
-
+    
+    // Load active timers when server starts (for crash recovery)
+    public void loadActiveTimersFromDatabase() {
+        List<Game> activeGames = gameRepository.findByStatus(GameStatus.ACTIVE);
+        LocalDateTime now = LocalDateTime.now();
+        
+        for (Game game : activeGames) {
+            Turn currentTurn = game.getCurrentTurn();
+            if (currentTurn != null && currentTurn.getStartTime() != null) {
+                Long timeLimit = getTimeLimitForPhase(game);
+                if (timeLimit != null && timeLimit > 0) {
+                    LocalDateTime startTime = currentTurn.getStartTime();
+                    long elapsed = Duration.between(startTime, now).getSeconds();
+                    long remaining = timeLimit - elapsed;
+                    
+                    if (remaining > 0) {
+                        activeTimers.put(game.getLobby().getLobbyCode(), new GameTimer(remaining));
+                    } else if (remaining == 0) {
+                        // Should have ended already - trigger now
+                        turnService.endTurn(game.getLobby().getLobbyCode());
+                    }
+                }
+            }
+        }
+    }
+    
     private Long getTimeLimitForPhase(Game game) {
         if (game.getCurrentTurn().getPhase() == TurnPhase.SPYMASTER_TURN) {
             Integer timeLimit = game.getLobby().getSettings().getSpymasterTimeLimit();
             return timeLimit == null ? null : timeLimit.longValue();
         }
-
         if (game.getCurrentTurn().getPhase() == TurnPhase.SPY_TURN) {
             Integer timeLimit = game.getLobby().getSettings().getSpyTimeLimit();
             return timeLimit == null ? null : timeLimit.longValue();
         }
-
         return null;
-    }
-
-    // helps with issue that sometimes seconds were skipped
-    private long calculateRemainingSeconds(LocalDateTime startTime, long timeLimit, LocalDateTime now) {
-        LocalDateTime deadline = startTime.plusSeconds(timeLimit);
-        long remainingMillis = Duration.between(now, deadline).toMillis();
-
-        if (remainingMillis <= 0) {
-            return 0;
-        }
-
-        return (long) Math.ceil(remainingMillis / 1000.0);
     }
 }
