@@ -1,6 +1,7 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.DatamuseWord;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,8 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static ch.uzh.ifi.hase.soprafs26.constant.Difficulty.*;
+
 @Service
 @Transactional
 public class WordService {
@@ -20,17 +23,13 @@ public class WordService {
     private static final Logger log = LoggerFactory.getLogger(WordService.class);
 
     private final RestTemplate restTemplate;
-    private static final String BASE_URL = "https://random-word-api.herokuapp.com/word";
+    private static final String DATAMUSE_URL = "https://api.datamuse.com/words";
 
     private static final List<String> DEFAULT_WORDS = List.of(
-            "APPLE", "BANK", "BRIDGE", "CAR", "CASTLE",
-            "CLOUD", "DIAMOND", "DRAGON", "EAGLE", "ENGINE",
-            "FALCON", "FIRE", "GARDEN", "GHOST", "HAMMER",
-            "HORSE", "ICE", "ISLAND", "JUNGLE", "KING",
-            "KNIGHT", "LAMP", "LEMON", "MARBLE", "MOON",
-            "NEEDLE", "NIGHT", "OCEAN", "OPERA", "PIANO",
-            "QUEEN", "RIVER", "STAR", "TREE", "UMBRELLA",
-            "VIOLET", "WAVE", "YARD", "ZERO", "TOWER"
+            "APPLE", "BANK", "BRIDGE", "CAR", "CASTLE", "CLOUD", "DIAMOND", "DRAGON", "EAGLE", "ENGINE",
+            "FALCON", "FIRE", "GARDEN", "GHOST", "HAMMER", "HORSE", "ICE", "ISLAND", "JUNGLE", "KING",
+            "KNIGHT", "LAMP", "LEMON", "MARBLE", "MOON", "NEEDLE", "NIGHT", "OCEAN", "OPERA", "PIANO",
+            "QUEEN", "RIVER", "STAR", "TREE", "UMBRELLA", "VIOLET", "WAVE", "YARD", "ZERO", "TOWER"
     );
 
     public WordService() {
@@ -41,46 +40,60 @@ public class WordService {
     }
 
     public List<String> getWordsForGame(Difficulty difficulty) {
-        /*try {
-            int diffLevel = mapDifficulty(difficulty);
-            Set<String> words = new HashSet<>();
-
-            // API only supports difficulty for 5 words at a time
-            // So we make 5 calls of 5 words each
-            while (words.size() < 25) {
-                String url = BASE_URL + "?number=5&diff=" + diffLevel;
-                String[] batch = restTemplate.getForObject(url, String[].class);
-                if (batch != null) {
-                    for (String word : batch) {
-                        words.add(word.toUpperCase());
-                        if (words.size() >= 25) break;
-                    }
-                }
-            }
-            log.info("Words for game (difficulty {}): {}", difficulty, words);
-            return new ArrayList<>(words);
-        } catch (Exception e) {
-            // API failed, use fallback
-            log.warn("API failed, using fallback words: {}", e.getMessage());
-            return getFallbackWords();
-        }*/
-
         return getFallbackWordsFromFile();
     }
 
-    private int mapDifficulty(Difficulty difficulty) {
-        switch (difficulty) {
-            case EASY: return 1;    // Very common words (e.g., "water", "house")
-            case MEDIUM_EASY: return 2;  // Common words
-            case MEDIUM: return 3;  // moderate words
-            case MEDIUM_HARD: return 4;// Uncommon words
-            case HARD: return 5;    // Rare words (e.g., "defenestration")
-            default: return 1;
+    public List<String> getWordsForGame(List<String> topics, Difficulty difficulty) {
+
+        int topicWordCount = 0;
+
+        switch(difficulty) {
+            case EASY: topicWordCount = 8;
+            case MEDIUM : topicWordCount = 15;
+            case HARD : topicWordCount = 22;
+        };
+
+        Set<String> topicWords = new HashSet<>();
+        for (String topic : topics) {
+            try {
+                String url = DATAMUSE_URL + "?rel_trg=" + topic;
+                DatamuseWord[] response = restTemplate.getForObject(url, DatamuseWord[].class);
+
+                if (response != null) {
+                    for (DatamuseWord dw : response) {
+                        // Filter: single words only, reasonable length
+                        if (!dw.word.contains(" ") && dw.word.length() >= 3 && dw.word.length() <= 12) {
+                            topicWords.add(dw.word.toUpperCase());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Datamuse failed for topic '{}': {}", topic, e.getMessage());
+            }
         }
+
+        // Shuffle topic words and take what we need
+        List<String> topicList = new ArrayList<>(topicWords);
+        Collections.shuffle(topicList);
+
+        // Take topic words (up to topicWordCount)
+        List<String> boardWords = new ArrayList<>(topicList.subList(0, topicWordCount));
+
+        // Fill remaining slots from default pool
+        List<String> defaults = getFallbackWordsFromFile();
+        defaults.removeAll(boardWords); // no duplicates
+        int remaining = 25 - boardWords.size();
+        boardWords.addAll(defaults.subList(0, remaining));
+
+        Collections.shuffle(boardWords); // mix them so topic words aren't grouped
+        return boardWords;
     }
 
+
+    // Words from File
     private List<String> getFallbackWordsFromFile() {
         List<String> words = loadWordsFromFile();
+        words.replaceAll(String::toUpperCase);
         Collections.shuffle(words);
         return words.subList(0, 25);
     }
@@ -105,13 +118,7 @@ public class WordService {
             return words;
         } catch (Exception e) {
             log.error("Failed to load words from file: {}", e.getMessage());
-            return new ArrayList<>(DEFAULT_WORDS); // fallback fallback
+            return new ArrayList<>(DEFAULT_WORDS); // fallback
         }
-    }
-
-    private List<String> getFallbackWords() {
-        List<String> words = new ArrayList<>(DEFAULT_WORDS);
-        Collections.shuffle(words);
-        return words.subList(0, 25);
     }
 }

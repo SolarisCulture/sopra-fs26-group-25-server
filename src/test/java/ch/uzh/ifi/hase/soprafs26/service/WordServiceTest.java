@@ -1,8 +1,11 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
+import org.hibernate.collection.spi.PersistentBag;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -23,6 +26,56 @@ class WordServiceTest {
             System.out.println(word); // see the words in test output
         });
     }
+
+    @Test
+    public void getWordsForGame_topics_easy() {
+        List<String> topics = new ArrayList<>(Arrays.asList("books", "animals", "politics"));
+        List<String> words = wordService.getWordsForGame(topics, Difficulty.EASY);
+
+        assertEquals(25, words.size());
+        assertEquals(25, new HashSet<>(words).size()); // all unique
+        words.forEach(word -> {
+            assertNotNull(word);
+            assertFalse(word.isEmpty());
+            System.out.println(word); // see the words in test output
+        });
+    }
+
+    @Test
+    public void getWordsForGame_topics_hard() {
+        List<String> topics = new ArrayList<>(Arrays.asList("books", "animals", "politics"));
+        List<String> words = wordService.getWordsForGame(topics, Difficulty.HARD);
+
+        assertEquals(25, words.size());
+        assertEquals(25, new HashSet<>(words).size()); // all unique
+        words.forEach(word -> {
+            assertNotNull(word);
+            assertFalse(word.isEmpty());
+            System.out.println(word); // see the words in test output
+        });
+    }
+
+    @Test
+    public void getWordsForGame_topics_hard_timer() {
+        List<String> topics = new ArrayList<>(Arrays.asList("books", "animals", "politics"));
+
+        long start = System.currentTimeMillis();
+        List<String> words = wordService.getWordsForGame(topics, Difficulty.HARD);
+        long elapsed = System.currentTimeMillis() - start;
+
+        System.out.println("Generation took: " + elapsed + "ms");
+
+        assertEquals(25, words.size());
+        assertEquals(25, new HashSet<>(words).size());
+        words.forEach(word -> {
+            assertNotNull(word);
+            assertFalse(word.isEmpty());
+            System.out.println(word);
+        });
+    }
+
+
+
 
     /*@Test
     public void getWordsForGame_hard_returns25UniqueWords() {
