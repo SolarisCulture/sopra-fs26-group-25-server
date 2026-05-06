@@ -27,7 +27,7 @@ public class TimerService {
         this.gameWebSocketHandler = gameWebSocketHandler;
     }
 
-    @Scheduled(fixedRate = 1000) // run method every second
+    //@Scheduled(fixedRate = 1000) // run method every second
     public void checkTimers() {
         List<Game> activeGames = gameRepository.findByStatus(GameStatus.ACTIVE);
         LocalDateTime now = LocalDateTime.now();
