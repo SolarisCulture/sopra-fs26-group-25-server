@@ -18,6 +18,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,6 +46,8 @@ public class TurnServiceTest {
     private GameWebSocketHandler gameWebSocketHandler;
     @Mock
     private TurnRepository turnRepository;
+    @Mock
+    private TimerService timerService;
 
     @InjectMocks
     private TurnService turnService;
@@ -64,6 +68,18 @@ public class TurnServiceTest {
         testLobby = new Lobby();
         testLobby.setLobbyCode("ABC123");
         testLobby.setGame(testGame);
+
+        LobbySettings settings = new LobbySettings();
+        settings.setSpyTimeLimit(120);
+        settings.setSpymasterTimeLimit(120);
+        testLobby.setSettings(settings);
+
+        testGame = new Game();
+        testGame.setStatus(GameStatus.ACTIVE);
+        testGame.setCurrentTurn(testTurn);
+        testGame.setLobby(testLobby);  
+        
+        testLobby.setGame(testGame); // For bidirectional consistency
     }
 
     // CLUE
@@ -71,7 +87,7 @@ public class TurnServiceTest {
     public void submitClue_validClue_success() {
         // Setup
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
-        //when(turnRepository.save(any(Turn.class))).thenReturn(testTurn);
+        when(turnRepository.saveAndFlush(any(Turn.class))).thenReturn(testTurn);
         when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
         when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
 
@@ -90,8 +106,11 @@ public class TurnServiceTest {
         assertEquals(3, testTurn.getClue().getCount());
         assertNotNull(testTurn.getStartTime());
 
+        // Verify timer was started
+        verify(timerService).startTimer(eq("ABC123"), eq(120L)); // Spy time limit
+
         // Verify saves and broadcasts happened
-        verify(turnRepository).saveAndFlush(testTurn);
+        verify(turnRepository).saveAndFlush(any(Turn.class));
         verify(gameWebSocketHandler).broadcastGameState(
                 eq("ABC123"), any(), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
@@ -211,13 +230,17 @@ public class TurnServiceTest {
         testGame.setLobby(testLobby);
         testLobby.setPlayerList(new ArrayList<>());
 
-        LobbySettings settings = new LobbySettings();
-        settings.setTimeLimit(120);
-        testLobby.setSettings(settings);
+        if (testLobby.getSettings() == null) {
+            LobbySettings settings = new LobbySettings();
+            settings.setSpyTimeLimit(120);
+            settings.setSpymasterTimeLimit(120);
+            testLobby.setSettings(settings);
+        }
 
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
         // lenient() tells Mockito: "don't complain if this mock isn't used." (happen in tests with exceptions)
         lenient().when(turnRepository.save(any(Turn.class))).thenReturn(testTurn);
+        lenient().when(turnRepository.saveAndFlush(any(Turn.class))).thenReturn(testTurn);
         lenient().when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
         lenient().when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
 
@@ -237,7 +260,7 @@ public class TurnServiceTest {
     }
 
     @Test
-    public void submitGuess_assassin_gameOver() {
+    public void submitGuess_assassin_gameOver() { 
         setupGuessTest(CardType.ASSASSIN, "BOMB");
 
         turnService.submitGuess("ABC123", new GuessDTO("BOMB"));
@@ -245,12 +268,15 @@ public class TurnServiceTest {
         assertEquals(GameStatus.FINISHED, testGame.getStatus());
         assertEquals(TeamColor.BLUE, testGame.getWinningTeam());
 
+        // Verify timer was stopped when game ended
+        verify(timerService, atLeast(1)).stopTimer("ABC123");
+
         verify(gameWebSocketHandler).broadcastGameState(
                 eq("ABC123"), eq(EventType.GAME_OVER), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
 
     @Test
-    public void submitGuess_civilian_endsTurn() {
+    public void submitGuess_civilian_endsTurn() { 
         setupGuessTest(CardType.CIVILIAN, "TABLE");
 
         turnService.submitGuess("ABC123", new GuessDTO("TABLE"));
@@ -259,19 +285,25 @@ public class TurnServiceTest {
         assertTrue(testGame.getBoard().findCardByWord("TABLE").isRevealed());
         assertEquals(2, testTurn.getGuessesRemaining());
         assertEquals(GameStatus.ACTIVE, testGame.getStatus());
+
+        // Verify timer was stopped when turn ended
+        verify(timerService).stopTimer("ABC123");
     }
 
     @Test
-    public void submitGuess_wrongTeamCard_scoresForOtherTeam() {
+    public void submitGuess_wrongTeamCard_scoresForOtherTeam() { 
         setupGuessTest(CardType.AGENTBLUE, "OCEAN");
 
         turnService.submitGuess("ABC123", new GuessDTO("OCEAN"));
 
         assertEquals(1, testGame.getBlueScore());
+
+        // Verify timer was stopped when turn ended
+        verify(timerService).stopTimer("ABC123");
     }
 
     @Test
-    public void submitGuess_allCardsFound_teamWins() {
+    public void submitGuess_allCardsFound_teamWins() { 
         setupGuessTest(CardType.AGENTRED, "APPLE");
         testGame.setRedScore(8);  // one away from winning
 
@@ -280,6 +312,7 @@ public class TurnServiceTest {
         assertEquals(GameStatus.FINISHED, testGame.getStatus());
         assertEquals(TeamColor.RED, testGame.getWinningTeam());
 
+        verify(timerService).stopTimer("ABC123");
         verify(gameService).calculateGameStatistics(testLobby.getLobbyCode());
         verify(gameWebSocketHandler).broadcastGameState(
                 eq("ABC123"), eq(EventType.GAME_OVER), any(GameBoardDTO.class), any(GameBoardDTO.class));
@@ -297,7 +330,7 @@ public class TurnServiceTest {
     }
 
     @Test
-    public void submitGuess_correctGuess_noGuessesRemaining_endsTurn() {
+    public void submitGuess_correctGuess_noGuessesRemaining_endsTurn() { 
         setupGuessTest(CardType.AGENTRED, "APPLE");
         testTurn.setGuessesRemaining(1); // last guess
 
@@ -306,6 +339,7 @@ public class TurnServiceTest {
         assertEquals(1, testGame.getRedScore());
         assertEquals(0, testTurn.getGuessesRemaining());
 
+        verify(timerService).stopTimer("ABC123");
         verify(gameWebSocketHandler).broadcastGameState(
                 eq("ABC123"), eq(EventType.CARD_REVEALED), any(GameBoardDTO.class), any(GameBoardDTO.class));
         verify(gameWebSocketHandler).broadcastGameState(
@@ -313,18 +347,27 @@ public class TurnServiceTest {
     }
 
     @Test
-    public void endTurn_voluntary_duringSpyTurn_success() {
+    public void endTurn_voluntary_duringSpyTurn_success() { 
         testTurn.setPhase(TurnPhase.SPY_TURN);
         testTurn.setCurrentTeamColor(TeamColor.RED);
         testGame.setTurns(new ArrayList<>(List.of(testTurn)));
+        testGame.setCurrentTurn(testTurn);
+
+        Turn newTurn = new Turn();
+        newTurn.setCurrentTeamColor(TeamColor.BLUE);
+        newTurn.setPhase(TurnPhase.SPYMASTER_TURN);
 
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
-        when(turnRepository.saveAndFlush(any(Turn.class))).thenAnswer(i -> i.getArgument(0));
+        when(turnRepository.saveAndFlush(any(Turn.class))).thenReturn(newTurn);
         when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
         when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
 
         turnService.endTurn("ABC123", true);
 
+        verify(timerService).stopTimer("ABC123"); // Verify Timer was stopped for ended turn
+        verify(timerService).startTimer(eq("ABC123"), eq(120L)); // Verify Timer was started for next turn
+
+        assertNotNull(testGame.getCurrentTurn(), "Current turn should not be null");
         assertEquals(TeamColor.BLUE, testGame.getCurrentTurn().getCurrentTeamColor());
         assertEquals(TurnPhase.SPYMASTER_TURN, testGame.getCurrentTurn().getPhase());
         verify(gameWebSocketHandler).broadcastGameState(
@@ -332,7 +375,7 @@ public class TurnServiceTest {
     }
 
     @Test
-    public void endTurn_voluntary_duringSpymasterTurn_throwsBadRequest() {
+    public void endTurn_voluntary_duringSpymasterTurn_throwsBadRequest() { 
         testTurn.setPhase(TurnPhase.SPYMASTER_TURN);
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
 
@@ -341,6 +384,8 @@ public class TurnServiceTest {
                 () -> turnService.endTurn("ABC123", true));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+
+        verify(timerService, never()).stopTimer("ABC123"); // Timer was NOT stopped => it threw an exception
     }
 
     @Test

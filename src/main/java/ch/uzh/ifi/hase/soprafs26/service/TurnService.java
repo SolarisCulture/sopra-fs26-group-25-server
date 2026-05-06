@@ -78,7 +78,10 @@ public class TurnService {
 
         turnRepository.saveAndFlush(turn);
 
-        Integer timeLimit = game.getLobby().getSettings().getSpyTimeLimit();
+        Integer timeLimit = null;
+        if (game.getLobby() != null && game.getLobby().getSettings() != null) {
+            timeLimit = game.getLobby().getSettings().getSpyTimeLimit();
+        }
         if (timeLimit != null && timeLimit > 0) {
             timerService.startTimer(lobbyCode, timeLimit);
         }
@@ -211,7 +214,6 @@ public class TurnService {
     }
 
     public void endTurn(String lobbyCode, boolean voluntary) {
-        timerService.stopTimer(lobbyCode);
 
         Game game = getActiveGame(lobbyCode);
         Turn currentTurn = game.getCurrentTurn();
@@ -219,6 +221,8 @@ public class TurnService {
         if (voluntary && currentTurn.getPhase() != TurnPhase.SPY_TURN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Can only end turn during guessing phase");
         }
+
+        timerService.stopTimer(lobbyCode);
 
         // Figure out the other team
         TeamColor nextTeam = (currentTurn.getCurrentTeamColor() == TeamColor.RED) ? TeamColor.BLUE : TeamColor.RED;
@@ -237,7 +241,10 @@ public class TurnService {
         game.getTurns().add(nextTurn);
         game.setCurrentTurn(nextTurn);
 
-        Integer timeLimit = game.getLobby().getSettings().getSpymasterTimeLimit();
+        Integer timeLimit = null;
+        if (game.getLobby() != null && game.getLobby().getSettings() != null) {
+            timeLimit = game.getLobby().getSettings().getSpymasterTimeLimit();
+        }
         if (timeLimit != null && timeLimit > 0) {
             timerService.startTimer(lobbyCode, timeLimit);
         }
