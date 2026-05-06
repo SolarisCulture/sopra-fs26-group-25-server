@@ -1,6 +1,5 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.DatamuseWord;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
@@ -13,8 +12,6 @@ import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static ch.uzh.ifi.hase.soprafs26.constant.Difficulty.*;
 
 @Service
 @Transactional
@@ -39,19 +36,13 @@ public class WordService {
         this.restTemplate = new RestTemplate(factory);
     }
 
-    public List<String> getWordsForGame(Difficulty difficulty) {
+    public List<String> getWordsForGame() {
         return getFallbackWordsFromFile();
     }
 
-    public List<String> getWordsForGame(List<String> topics, Difficulty difficulty) {
+    public List<String> getWordsForGame(List<String> topics) {
 
-        int topicWordCount = 0;
-
-        switch(difficulty) {
-            case EASY: topicWordCount = 8;
-            case MEDIUM : topicWordCount = 15;
-            case HARD : topicWordCount = 22;
-        };
+        int topicWordCount = 15;
 
         Set<String> topicWords = new HashSet<>();
         for (String topic : topics) {
@@ -61,7 +52,6 @@ public class WordService {
 
                 if (response != null) {
                     for (DatamuseWord dw : response) {
-                        // Filter: single words only, reasonable length
                         if (!dw.word.contains(" ") && dw.word.length() >= 3 && dw.word.length() <= 12) {
                             topicWords.add(dw.word.toUpperCase());
                         }
@@ -72,23 +62,20 @@ public class WordService {
             }
         }
 
-        // Shuffle topic words and take what we need
         List<String> topicList = new ArrayList<>(topicWords);
         Collections.shuffle(topicList);
 
-        // Take topic words (up to topicWordCount)
-        List<String> boardWords = new ArrayList<>(topicList.subList(0, topicWordCount));
+        int actualTopicCount = Math.min(topicWordCount, topicList.size());
+        List<String> boardWords = new ArrayList<>(topicList.subList(0, actualTopicCount));
 
-        // Fill remaining slots from default pool
         List<String> defaults = getFallbackWordsFromFile();
-        defaults.removeAll(boardWords); // no duplicates
+        defaults.removeAll(boardWords);
         int remaining = 25 - boardWords.size();
         boardWords.addAll(defaults.subList(0, remaining));
 
-        Collections.shuffle(boardWords); // mix them so topic words aren't grouped
+        Collections.shuffle(boardWords);
         return boardWords;
     }
-
 
     // Words from File
     private List<String> getFallbackWordsFromFile() {

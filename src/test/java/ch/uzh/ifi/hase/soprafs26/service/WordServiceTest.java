@@ -1,7 +1,5 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
-import org.hibernate.collection.spi.PersistentBag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -12,11 +10,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WordServiceTest {
-    private WordService wordService = new WordService();
+    private final WordService wordService = new WordService();
 
     @Test
-    public void getWordsForGame_easy_returns25UniqueWords() {
-        List<String> words = wordService.getWordsForGame(Difficulty.EASY);
+    public void getWordsForGame_returns25UniqueWords() {
+        List<String> words = wordService.getWordsForGame();
 
         assertEquals(25, words.size());
         assertEquals(25, new HashSet<>(words).size()); // all unique
@@ -28,9 +26,9 @@ class WordServiceTest {
     }
 
     @Test
-    public void getWordsForGame_topics_easy() {
+    public void getWordsForGame_topics() {
         List<String> topics = new ArrayList<>(Arrays.asList("books", "animals", "politics"));
-        List<String> words = wordService.getWordsForGame(topics, Difficulty.EASY);
+        List<String> words = wordService.getWordsForGame(topics);
 
         assertEquals(25, words.size());
         assertEquals(25, new HashSet<>(words).size()); // all unique
@@ -42,25 +40,11 @@ class WordServiceTest {
     }
 
     @Test
-    public void getWordsForGame_topics_hard() {
-        List<String> topics = new ArrayList<>(Arrays.asList("books", "animals", "politics"));
-        List<String> words = wordService.getWordsForGame(topics, Difficulty.HARD);
-
-        assertEquals(25, words.size());
-        assertEquals(25, new HashSet<>(words).size()); // all unique
-        words.forEach(word -> {
-            assertNotNull(word);
-            assertFalse(word.isEmpty());
-            System.out.println(word); // see the words in test output
-        });
-    }
-
-    @Test
-    public void getWordsForGame_topics_hard_timer() {
+    public void getWordsForGame_topics_timer() {
         List<String> topics = new ArrayList<>(Arrays.asList("books", "animals", "politics"));
 
         long start = System.currentTimeMillis();
-        List<String> words = wordService.getWordsForGame(topics, Difficulty.HARD);
+        List<String> words = wordService.getWordsForGame(topics);
         long elapsed = System.currentTimeMillis() - start;
 
         System.out.println("Generation took: " + elapsed + "ms");
@@ -73,27 +57,4 @@ class WordServiceTest {
             System.out.println(word);
         });
     }
-
-
-
-
-    /*@Test
-    public void getWordsForGame_hard_returns25UniqueWords() {
-        List<String> words = wordService.getWordsForGame(Difficulty.HARD);
-
-        assertEquals(25, words.size());
-        assertEquals(25, new HashSet<>(words).size());
-        words.forEach(word -> System.out.println(word));
-    }
-
-    @Test
-    public void getWordsForGame_allDifficulties_returnDifferentWords() {
-        List<String> easy = wordService.getWordsForGame(Difficulty.EASY);
-        List<String> hard = wordService.getWordsForGame(Difficulty.HARD);
-
-        // Not all words should be the same
-        assertNotEquals(easy, hard);
-        System.out.println("EASY: " + easy);
-        System.out.println("HARD: " + hard);
-    }*/
 }
