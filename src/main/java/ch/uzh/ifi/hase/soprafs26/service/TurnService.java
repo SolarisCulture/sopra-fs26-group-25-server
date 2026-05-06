@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Optional;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
+import ch.uzh.ifi.hase.soprafs26.service.TimerService;
 
 @Service
 @Transactional
@@ -36,12 +38,14 @@ public class TurnService {
     private final GameService gameService;
     private final GameWebSocketHandler gameWebSocketHandler;
     private final TurnRepository turnRepository;
+    private final TimerService timerService;
 
-    public TurnService(LobbyRepository lobbyRepository, GameService gameService, GameWebSocketHandler gameWebSocketHandler, TurnRepository turnRepository) {
+    public TurnService(LobbyRepository lobbyRepository, GameService gameService, GameWebSocketHandler gameWebSocketHandler, TurnRepository turnRepository, @Lazy TimerService timerService) {
         this.lobbyRepository = lobbyRepository;
         this.turnRepository = turnRepository;
         this.gameService = gameService;
         this.gameWebSocketHandler = gameWebSocketHandler;
+        this.timerService = timerService;
     }
 
     public void submitClue(String lobbyCode, ClueDTO clueDTO) {
@@ -73,6 +77,11 @@ public class TurnService {
         turn.setStartTime(LocalDateTime.now());
 
         turnRepository.saveAndFlush(turn);
+
+        Integer timeLimit = game.getLobby().getSettings().getSpyTimeLimit();
+        if (timeLimit != null && timeLimit > 0) {
+            timerService.startTimer(lobbyCode, timeLimit);
+        }
 
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
@@ -120,6 +129,7 @@ public class TurnService {
             TeamColor winner = (team == TeamColor.RED) ? TeamColor.BLUE : TeamColor.RED;
             game.setWinningTeam(winner);
             game.setStatus(GameStatus.FINISHED);
+            timerService.stopTimer(lobbyCode);
         } else if (cardType == CardType.CIVILIAN) {
             turnEnded = true;
         } else if ((cardType == CardType.AGENTRED && team == TeamColor.RED) ||
@@ -163,6 +173,7 @@ public class TurnService {
         }
 
         if (game.getStatus() == GameStatus.FINISHED) {
+            timerService.stopTimer(lobbyCode);
             gameService.calculateGameStatistics(lobbyCode);
             GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
             GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
@@ -200,6 +211,8 @@ public class TurnService {
     }
 
     public void endTurn(String lobbyCode, boolean voluntary) {
+        timerService.stopTimer(lobbyCode);
+
         Game game = getActiveGame(lobbyCode);
         Turn currentTurn = game.getCurrentTurn();
 
@@ -223,6 +236,11 @@ public class TurnService {
         turnRepository.saveAndFlush(nextTurn);
         game.getTurns().add(nextTurn);
         game.setCurrentTurn(nextTurn);
+
+        Integer timeLimit = game.getLobby().getSettings().getSpymasterTimeLimit();
+        if (timeLimit != null && timeLimit > 0) {
+            timerService.startTimer(lobbyCode, timeLimit);
+        }
 
         // Save and broadcast
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
