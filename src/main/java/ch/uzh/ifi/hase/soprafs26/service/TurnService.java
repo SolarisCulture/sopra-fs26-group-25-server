@@ -12,7 +12,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs26.constant.CardType;
 import ch.uzh.ifi.hase.soprafs26.constant.EventType;
-import ch.uzh.ifi.hase.soprafs26.constant.GameEventType;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
@@ -29,7 +28,6 @@ import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
-import ch.uzh.ifi.hase.soprafs26.service.TimerService;
 
 @Service
 @Transactional
@@ -64,8 +62,8 @@ public class TurnService {
             clue.setCount(clueDTO.getCount());
         }
         
-        clue.setType(GameEventType.CLUE);       
-        clue.setTimeStamp(LocalDateTime.now());
+        //clue.setType(GameEventType.CLUE);
+        //clue.setTimeStamp(LocalDateTime.now());
         clue.setDescription("Clue: " + clueDTO.getWord() + " (" + clueDTO.getCount() + ")");
 
         turn.setClue(clue);
@@ -116,8 +114,8 @@ public class TurnService {
 
         Guess guess = new Guess();
         guess.setWordCard(wordCard);
-        guess.setType(GameEventType.GUESS);
-        guess.setTimeStamp(LocalDateTime.now());
+        //guess.setType(GameEventType.GUESS);
+        //guess.setTimeStamp(LocalDateTime.now());
         guess.setDescription("Guessed: " + wordCard.getWord());
         turn.getGuesses().add(guess);
         turn.setGuessesRemaining(turn.getGuessesRemaining()- 1);
