@@ -115,4 +115,6 @@ public class LobbyController {
 		if(lobbyCode == null || request == null){ throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the arguments is null");}
 		lobbyService.updateSettings(lobbyCode, request);
 	}
+
+
 }
