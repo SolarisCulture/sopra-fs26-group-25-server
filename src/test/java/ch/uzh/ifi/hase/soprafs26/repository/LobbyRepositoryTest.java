@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
@@ -85,7 +84,7 @@ public class LobbyRepositoryTest {
     }
 
     @Test
-    public void lobbyCode_unique_constraint_throwsException() { // TODO: Fails due to ConstraintViolationException
+    public void lobbyCode_unique_constraint_throwsException() {
         Lobby lobby1 = new Lobby();
         lobby1.setLobbyCode("ABC123");
         lobby1.setHostId(1L);
@@ -95,40 +94,63 @@ public class LobbyRepositoryTest {
         lobby2.setLobbyCode("ABC123"); // duplicate
         lobby2.setHostId(2L);
 
-        assertThrows(DataIntegrityViolationException.class, () -> {
+        assertThrows(org.hibernate.exception.ConstraintViolationException.class, () -> {
             entityManager.persistAndFlush(lobby2);
         });
     }
 
     @Test
-    public void deleteLobby_cascadesOrphanRemovalToGame() { // TODO: Fails due to TransientPropertyValueException
+    public void deleteLobby_cascadesOrphanRemovalToGame() {
+        // 1. Create and persist the Turn first -> hibernate expects Turn to be saved BEFORE Game references it
+        Turn turn = new Turn();
+        turn.setPhase(TurnPhase.SPYMASTER_TURN);
+        turn.setStartTime(LocalDateTime.now());
+        entityManager.persist(turn);
+        
+        // 2. Create Game and link to Turn
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        game.setCurrentTurn(turn);
+        turn.setGame(game);
+        
+        // 3. Create Lobby and link to Game
         Lobby lobby = new Lobby();
         lobby.setLobbyCode("DEL123");
         lobby.setHostId(1L);
-
-        Game game = new Game();
-        game.setStatus(GameStatus.ACTIVE);
+        lobby.setCreatedAt(LocalDateTime.now());
+        lobby.setLobbyStatus(LobbyStatus.WAITING);
         lobby.setGame(game);
         game.setLobby(lobby);
-
-        Turn turn = new Turn();
-        turn.setGame(game);
-        game.setCurrentTurn(turn);
-        turn.setPhase(TurnPhase.SPYMASTER_TURN);
-
-        entityManager.persistAndFlush(lobby);
+        
+        // 4. Persist Lobby -> cascades to Game (TransientPropertyValueException if Turn not persisted before)
+        entityManager.persist(lobby);
+        entityManager.flush();
+        
         Long lobbyId = lobby.getId();
         Long gameId = game.getId();
-
-        // Ensure game exists
+        Long turnId = turn.getId();
+        
+        // 5. Verify everything exists
+        assertNotNull(entityManager.find(Lobby.class, lobbyId));
         assertNotNull(entityManager.find(Game.class, gameId));
-
-        // Delete lobby
+        assertNotNull(entityManager.find(Turn.class, turnId));
+        
+        // 6. Remove Turn first
+        game.setCurrentTurn(null); // Remove reference to Turn first
+        entityManager.merge(game);
+        entityManager.flush();
+        
+        // 7. Delete Turn (now orphaned)
+        entityManager.remove(turn);
+        
+        // 8. Delete Lobby (cascades to Game)
         entityManager.remove(lobby);
         entityManager.flush();
-
+        
+        // 9. Verify all are gone
         assertNull(entityManager.find(Lobby.class, lobbyId));
-        assertNull(entityManager.find(Game.class, gameId)); // Game should be removed by orphanRemoval
+        assertNull(entityManager.find(Game.class, gameId));
+        assertNull(entityManager.find(Turn.class, turnId));
     }
 
     @Test

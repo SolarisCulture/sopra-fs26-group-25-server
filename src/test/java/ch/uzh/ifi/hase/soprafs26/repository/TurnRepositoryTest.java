@@ -29,16 +29,7 @@ public class TurnRepositoryTest {
     private TurnRepository turnRepository;
 
     @Test
-    public void saveTurn_withClueAndGuesses_persistsAndRetrieves() { // TODO: Fails due to ConstraintViolationException
-        /* Error Code:
-        TurnRepositoryTest > saveTurn_withClueAndGuesses_persistsAndRetrieves() STANDARD_OUT
-        Hibernate: insert into word_card (card_type,revealed,word,id) values (?,?,?,default)
-        Hibernate: select next value for game_event_seq
-        Hibernate: insert into game_event (description,player_id,time_stamp,type,count,word,dtype,id) values (?,?,?,?,?,?,'Clue',?)
-        2026-05-04T18:48:52.199+02:00  WARN 26187 --- [    Test worker] org.hibernate.orm.jdbc.error             : HHH000247: ErrorCode: 23514, SQLState: 23514
-        2026-05-04T18:48:52.199+02:00  WARN 26187 --- [    Test worker] org.hibernate.orm.jdbc.error             : Check constraint invalid: "CONSTRAINT_8C: "; SQL statement:
-        insert into game_event (description,player_id,time_stamp,type,count,word,dtype,id) values (?,?,?,?,?,?,'Clue',?) [23514-240]
-        */
+    public void saveTurn_withClueAndGuesses_persistsAndRetrieves() { 
         // Create Turn
         Turn turn = new Turn();
         turn.setPhase(TurnPhase.SPY_TURN);
@@ -50,7 +41,6 @@ public class TurnRepositoryTest {
         Clue clue = new Clue();
         clue.setWord("animal");
         clue.setCount(2);
-        clue.setType(GameEventType.CLUE);
         clue.setTimeStamp(LocalDateTime.now());
         clue.setDescription("Test clue");
         turn.setClue(clue);
@@ -64,7 +54,6 @@ public class TurnRepositoryTest {
         // Create Guess
         Guess guess = new Guess();
         guess.setWordCard(card);
-        guess.setType(GameEventType.GUESS);
         guess.setTimeStamp(LocalDateTime.now());
         guess.setDescription("Guessed APPLE");
         turn.setGuesses(List.of(guess));

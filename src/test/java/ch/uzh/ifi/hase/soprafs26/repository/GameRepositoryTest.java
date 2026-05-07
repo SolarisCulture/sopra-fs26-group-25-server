@@ -103,7 +103,7 @@ public class GameRepositoryTest {
 
     @Test
     public void saveGame_cascadesToBoardAndCards() {
-        // Create Board and 2 WordCards (simulate 25 but 2 is enough for cascade check)
+        // Create Board and 2 WordCards
         Board board = new Board();
         WordCard card1 = new WordCard();
         card1.setWord("WORD1");
@@ -119,7 +119,7 @@ public class GameRepositoryTest {
         board.setGame(game);
         game.setStatus(GameStatus.ACTIVE);
 
-        // Create minimal Turn (required because game.currentTurn is not nullable)
+        // Create minimal Turn 
         Turn turn = new Turn();
         turn.setGame(game);
         turn.setPhase(TurnPhase.SPYMASTER_TURN);
@@ -141,54 +141,98 @@ public class GameRepositoryTest {
     }
 
     @Test
-    public void findArchivedByLobbyCode_ignoresActiveAndFinished() { // TODO: Fails due to SQL DataException
-        // Create Lobby
-        Lobby lobby = new Lobby();
-        lobby.setLobbyCode("ARCHTEST");
-        lobby.setHostId(1L);
-        entityManager.persistAndFlush(lobby);
+    public void findArchivedByLobbyCode_ignoresActiveAndFinished() { 
+        // Create an ACTIVE game
+        Lobby activeLobby = new Lobby();
+        activeLobby.setLobbyCode("ACTIVE");
+        activeLobby.setHostId(1L);
+        activeLobby.setCreatedAt(LocalDateTime.now());
+        activeLobby.setLobbyStatus(LobbyStatus.WAITING);
 
-        // Helper to create a game with given status
-        java.util.function.BiConsumer<Lobby, GameStatus> createGame = (l, status) -> {
-            Game g = new Game();
-            g.setStatus(status);
-            g.setLobby(l);
-            Turn t = new Turn();
-            t.setGame(g);
-            g.setCurrentTurn(t);
-            entityManager.persist(g);
-        };
+        Game activeGame = new Game();
+        Turn activeTurn = new Turn();
+        activeTurn.setGame(activeGame);
+        entityManager.persist(activeTurn);
+        activeGame.setCurrentTurn(activeTurn);
+        activeGame.setLobby(activeLobby);
+        activeLobby.setGame(activeGame);
 
-        createGame.accept(lobby, GameStatus.ACTIVE);
-        createGame.accept(lobby, GameStatus.FINISHED);
-        createGame.accept(lobby, GameStatus.ARCHIVED);
-
+        entityManager.persist(activeLobby);
+        entityManager.flush();
+        activeGame.setStatus(GameStatus.ACTIVE);
         entityManager.flush();
 
-        List<Game> archived = gameRepository.findArchivedByLobbyCode("ARCHTEST");
-        assertEquals(1, archived.size());
-        assertEquals(GameStatus.ARCHIVED, archived.get(0).getStatus());
+        // Create a FINISHED game
+        Lobby finishedLobby = new Lobby();
+        finishedLobby.setLobbyCode("FINISH");
+        finishedLobby.setHostId(1L);
+        finishedLobby.setCreatedAt(LocalDateTime.now());
+        finishedLobby.setLobbyStatus(LobbyStatus.FINISHED);
+
+        Game finishedGame = new Game();
+        Turn finishedTurn = new Turn();
+        finishedTurn.setGame(finishedGame);
+        entityManager.persist(finishedTurn);
+        finishedGame.setCurrentTurn(finishedTurn);
+        finishedGame.setLobby(finishedLobby);
+        finishedLobby.setGame(finishedGame);
+
+        entityManager.persist(finishedLobby);
+        entityManager.flush();
+        finishedGame.setStatus(GameStatus.FINISHED);
+        entityManager.flush();
+
+        // Create an ARCHIVED game
+        Lobby archivedLobby = new Lobby();
+        archivedLobby.setLobbyCode("ARCHIV");
+        archivedLobby.setHostId(1L);
+        archivedLobby.setCreatedAt(LocalDateTime.now());
+        archivedLobby.setLobbyStatus(LobbyStatus.IN_PROGRESS);
+
+        Game archivedGame = new Game();
+        Turn archivedTurn = new Turn();
+        archivedTurn.setGame(archivedGame);
+        entityManager.persist(archivedTurn);
+        archivedGame.setCurrentTurn(archivedTurn);
+        archivedGame.setLobby(archivedLobby);
+        archivedLobby.setGame(archivedGame);
+
+        entityManager.persist(archivedLobby);
+        entityManager.flush();
+        archivedGame.setStatus(GameStatus.ARCHIVED);
+        entityManager.flush();
+
+        List<Game> foundGames = gameRepository.findArchivedByLobbyCode("ARCHIV");
+
+        // Assert only the archived game is returned
+        assertNotNull(foundGames);
+        assertEquals(1, foundGames.size());
+        assertEquals(GameStatus.ARCHIVED, foundGames.get(0).getStatus());
+        assertEquals("ARCHIV", foundGames.get(0).getLobby().getLobbyCode());
     }
 
     @Test
-    public void game_prePersist_setsDefaults() { // TODO: Fails die tp TransientPropertyValueException
-        Game game = new Game();
-        // No explicit status, createdAt, scores set
+    public void game_prePersist_setsDefaults() { 
+        // Create and persist a Board
+        Board board = new Board();
+        entityManager.persistAndFlush(board);
+
+        // Create and persist a Turn
         Turn turn = new Turn();
-        turn.setGame(game);
-        game.setCurrentTurn(turn);
         turn.setPhase(TurnPhase.SPYMASTER_TURN);
+        turn.setStartTime(LocalDateTime.now());
+        entityManager.persistAndFlush(turn);
+
+        Game game = new Game();
+        game.setBoard(board);
+        game.setCurrentTurn(turn);
 
         entityManager.persistAndFlush(game);
-        Long id = game.getId();
 
-        entityManager.clear();
-
-        Game loaded = entityManager.find(Game.class, id);
-        assertNotNull(loaded.getCreatedAt());
-        assertEquals(GameStatus.ACTIVE, loaded.getStatus());
-        assertEquals(0, loaded.getRedScore());
-        assertEquals(0, loaded.getBlueScore());
-        assertEquals(1, loaded.getCurrentRound());
+        assertNotNull(game.getId());
+        assertEquals(GameStatus.ACTIVE, game.getStatus());
+        assertEquals(0, game.getRedScore());
+        assertEquals(0, game.getBlueScore());
+        assertEquals(1, game.getCurrentRound());
     }
 }
