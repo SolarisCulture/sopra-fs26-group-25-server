@@ -5,16 +5,22 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
 import ch.uzh.ifi.hase.soprafs26.constant.EventType;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.SubscribeDTO;
+import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
 import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
+
+import java.util.HashMap;
 
 
 @Controller
@@ -23,10 +29,12 @@ public class GameWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(GameWebSocketHandler.class); // For debugging
     private final SimpMessagingTemplate messagingTemplate; // The tool that sends messages over WebSocket
     private final TurnService turnService;
+    private final LobbyPresenceService lobbyPresenceService;
 
-    public GameWebSocketHandler(SimpMessagingTemplate messagingTemplate, @Lazy TurnService turnService) {
+    public GameWebSocketHandler(SimpMessagingTemplate messagingTemplate, @Lazy TurnService turnService, LobbyPresenceService lobbyPresenceService) {
         this.messagingTemplate = messagingTemplate;
         this.turnService = turnService;
+        this.lobbyPresenceService = lobbyPresenceService;
     }
     // ==================== Incoming messages ====================
 
@@ -48,6 +56,26 @@ public class GameWebSocketHandler {
     //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleEndTurn(@DestinationVariable String lobbyCode) {
         turnService.endTurn(lobbyCode);
+    }
+
+    @MessageMapping("/{lobbyCode}/game-subscribe")
+    public void handleGameSubscribe(@DestinationVariable String lobbyCode, @Payload SubscribeDTO payload, StompHeaderAccessor accessor) {
+        Long playerId = null;
+        if (payload.getData() != null) {
+            playerId = payload.getData().getId();
+        }
+
+        if (playerId != null) {
+            if (accessor.getSessionAttributes() == null) {
+                accessor.setSessionAttributes(new HashMap<>());
+            }
+            accessor.getSessionAttributes().put("lobbyCode", lobbyCode);
+            accessor.getSessionAttributes().put("playerId", playerId);
+            lobbyPresenceService.registerGameConnection(accessor.getSessionId(), lobbyCode, playerId);
+            log.info("Stored game playerId {} for session {}", playerId, accessor.getSessionId());
+        } else {
+            log.warn("No playerId in game subscription payload");
+        }
     }
 
 
@@ -95,9 +123,21 @@ public class GameWebSocketHandler {
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", GameEvent.returningToLobby(lobbyCode));
     }
 
+    public void broadcastReturningToLobbyAfterDisconnect(String lobbyCode) {
+        log.info("Broadcasting RETURNING_TO_LOBBY_AFTER_DISCONNECT for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", GameEvent.returningToLobbyAfterDisconnect(lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", GameEvent.returningToLobbyAfterDisconnect(lobbyCode));
+    }
+
     public void broadcastTimer(String lobbyCode, Long timer) {
         log.info("Broadcasting TIMER_UPDATE for lobby: {}", lobbyCode);
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", GameEvent.timerUpdate(lobbyCode, timer));
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", GameEvent.timerUpdate(lobbyCode, timer));
+    }
+
+    public void broadcastPlayersUpdated(String lobbyCode) {
+        log.info("Broadcasting PlayersUpdated for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent("PlayersUpdated", lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent("PlayersUpdated", lobbyCode));
     }
 }

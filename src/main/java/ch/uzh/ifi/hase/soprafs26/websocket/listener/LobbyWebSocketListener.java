@@ -7,17 +7,17 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
+import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
 
 @Component
 public class LobbyWebSocketListener {
 
     private static final Logger log = LoggerFactory.getLogger(LobbyWebSocketListener.class);
 
-    private final LobbyService lobbyService;
+    private final LobbyPresenceService lobbyPresenceService;
 
-    public LobbyWebSocketListener(LobbyService lobbyService) {
-        this.lobbyService = lobbyService;
+    public LobbyWebSocketListener(LobbyPresenceService lobbyPresenceService) {
+        this.lobbyPresenceService = lobbyPresenceService;
     }
 
     // This will be called whenever a Websocket session closes
@@ -27,19 +27,9 @@ public class LobbyWebSocketListener {
         // Stores WebSocket session data
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
 
-        // Gets the lobby code (If lobbycode exists --> get it, else --> null)
-        String lobbyCode = accessor.getSessionAttributes() != null
-                ? (String) accessor.getSessionAttributes().get("lobbyCode")
-                : null;
-
-        // Same for playerId
-        Long playerId = accessor.getSessionAttributes() != null
-                ? (Long) accessor.getSessionAttributes().get("playerId")
-                : null;
-
-        if (lobbyCode != null && playerId != null) {
-            log.info("Player {} disconnected from lobby {}", playerId, lobbyCode);
-            lobbyService.leaveLobby(lobbyCode, playerId);
+        if (accessor.getSessionId() != null) {
+            log.info("WebSocket session {} disconnected", accessor.getSessionId());
+            lobbyPresenceService.handleDisconnect(accessor.getSessionId());
         }
     }
 }
