@@ -251,10 +251,10 @@ public class LobbyService {
         // Validate rounds
         if(request.getRounds() != null) {
             int val = request.getRounds();
-            if(val < 1 || val > 1000) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rounds must be between 1 and 1000");
+            if(val < 0 || val > 1000) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rounds must be between 0 and 1000");
             }
-            settings.setRounds(val);
+            settings.setRounds(val == 0 ? null : val);
         }
 
         lobbyRepository.save(lobby);
