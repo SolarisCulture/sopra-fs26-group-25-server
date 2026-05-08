@@ -207,6 +207,80 @@ public class TurnService {
         gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
     }
 
+    public void submitReportedGuess(String lobbyCode, GuessDTO guessDTO) {
+        Game game = getActiveGame(lobbyCode);
+        Turn turn = getCurrentTurn(game, TurnPhase.SPY_TURN);
+
+        if (turn.getClue() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No reported clue to penalize");
+        }
+
+        WordCard wordCard = game.getBoard().findCardByWord(guessDTO.getWord());
+        if (wordCard == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "WordCard with word" + guessDTO.getWord() + " not exist!");
+        }
+        if (wordCard.isRevealed()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card already revealed!");
+        }
+
+        TeamColor reportedTeam = turn.getCurrentTeamColor();
+        TeamColor penaltyTeam = getOtherTeam(reportedTeam);
+        CardType expectedPenaltyCard = getAgentCardType(penaltyTeam);
+
+        if (wordCard.getCardType() != expectedPenaltyCard) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Penalty reveal must be one of the opposing spymaster's own cards");
+        }
+
+        wordCard.setRevealed(true);
+        scoreTeamCard(game, penaltyTeam);
+
+        Guess guess = new Guess();
+        guess.setWordCard(wordCard);
+        guess.setDescription("Penalty revealed: " + wordCard.getWord());
+        turn.getGuesses().add(guess);
+
+        if (hasTeamWon(game, penaltyTeam)) {
+            game.setWinningTeam(penaltyTeam);
+            game.setStatus(GameStatus.FINISHED);
+            timerService.stopTimer(lobbyCode);
+            gameService.calculateGameStatistics(lobbyCode);
+            GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+            GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+            gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.GAME_OVER, spymasterView, spyView);
+            return;
+        }
+
+        turn.setClue(null);
+        turn.setGuessesRemaining(0);
+        turn.setPhase(TurnPhase.SPYMASTER_TURN);
+        turn.setStartTime(LocalDateTime.now());
+
+        turnRepository.saveAndFlush(turn);
+
+        Integer timeLimit = null;
+        if (game.getLobby() != null && game.getLobby().getSettings() != null) {
+            timeLimit = game.getLobby().getSettings().getSpymasterTimeLimit();
+        }
+        if (timeLimit != null && timeLimit > 0) {
+            timerService.startTimer(lobbyCode, timeLimit);
+        }
+
+        GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+        GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+        gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CARD_REVEALED, spymasterView, spyView);
+    }
+
+    public void markClueRuledInvalid(String lobbyCode) {
+        Game game = getActiveGame(lobbyCode);
+        Turn turn = getCurrentTurn(game, TurnPhase.SPY_TURN);
+
+        if (turn.getClue() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No clue to rule invalid");
+        }
+
+        timerService.stopTimer(lobbyCode);
+    }
+
     public void endTurn(String lobbyCode) {
         endTurn(lobbyCode, false);
     }
@@ -223,7 +297,7 @@ public class TurnService {
         timerService.stopTimer(lobbyCode);
 
         // Figure out the other team
-        TeamColor nextTeam = (currentTurn.getCurrentTeamColor() == TeamColor.RED) ? TeamColor.BLUE : TeamColor.RED;
+        TeamColor nextTeam = getOtherTeam(currentTurn.getCurrentTeamColor());
 
         // Create a new Turn for that team
         Turn nextTurn = new Turn();
@@ -285,5 +359,27 @@ public class TurnService {
         return turn;
     }
 
+    private TeamColor getOtherTeam(TeamColor team) {
+        return team == TeamColor.RED ? TeamColor.BLUE : TeamColor.RED;
+    }
+
+    private CardType getAgentCardType(TeamColor team) {
+        return team == TeamColor.RED ? CardType.AGENTRED : CardType.AGENTBLUE;
+    }
+
+    private void scoreTeamCard(Game game, TeamColor team) {
+        if (team == TeamColor.RED) {
+            game.setRedScore(game.getRedScore() + 1);
+        } else {
+            game.setBlueScore(game.getBlueScore() + 1);
+        }
+    }
+
+    private boolean hasTeamWon(Game game, TeamColor team) {
+        if (team == TeamColor.RED) {
+            return game.getRedScore() == game.getRedTotal();
+        }
+        return game.getBlueScore() == game.getBlueTotal();
+    }
 
 }

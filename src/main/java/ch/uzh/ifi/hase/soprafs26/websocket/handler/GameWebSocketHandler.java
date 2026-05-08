@@ -31,25 +31,48 @@ public class GameWebSocketHandler {
     // ==================== Incoming messages ====================
 
     @MessageMapping("/{lobbyCode}/clue")
-    //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleClue(@DestinationVariable String lobbyCode, ClueDTO clueDTO) {
         log.info("Submit Clue log");
         turnService.submitClue(lobbyCode, clueDTO);
     }
 
     @MessageMapping("/{lobbyCode}/guess")
-    //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleGuess(@DestinationVariable String lobbyCode, GuessDTO guessDTO) {
         log.info("Submit Clue log");
         turnService.submitGuess(lobbyCode, guessDTO);
     }
 
     @MessageMapping("/{lobbyCode}/turn-change")
-    //@SendTo("/topic/game/{lobbyCode}/spymaster")
     public void handleEndTurn(@DestinationVariable String lobbyCode) {
         turnService.endTurn(lobbyCode);
     }
 
+    @MessageMapping("/{lobbyCode}/clue-report")
+    public void handleClueReport(@DestinationVariable String lobbyCode) {
+        log.info("Broadcasting ClueReported for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent("ClueReported", lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent("ClueReported", lobbyCode));
+    }
+
+    @MessageMapping("/{lobbyCode}/clue-approved")
+    public void handleClueApproved(@DestinationVariable String lobbyCode) {
+        log.info("Broadcasting ClueApproved for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent("ClueApproved", lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent("ClueApproved", lobbyCode));
+    }
+
+    @MessageMapping("/{lobbyCode}/clue-ruled-invalid")
+    public void handleClueRuledInvalid(@DestinationVariable String lobbyCode) {
+        log.info("Broadcasting ClueRuledInvalid for lobby: {}", lobbyCode);
+        turnService.markClueRuledInvalid(lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent("ClueRuledInvalid", lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent("ClueRuledInvalid", lobbyCode));
+    }
+
+    @MessageMapping("/{lobbyCode}/reported-guess")
+    public void handleReportedGuess(@DestinationVariable String lobbyCode, GuessDTO guessDTO) {
+        turnService.submitReportedGuess(lobbyCode, guessDTO);
+    }
 
     // ==================== Broadcasting ====================
     public void broadcastGameStarted(String lobbyCode, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
