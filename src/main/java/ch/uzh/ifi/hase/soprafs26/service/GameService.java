@@ -82,7 +82,8 @@ public class GameService {
         game.setStartingTeam(startingTeam);
         board.setGame(game);
         game.setStatus(GameStatus.ACTIVE);
-        game.setMaxRounds(lobby.getSettings().getRounds());
+        Integer maxRounds = lobby.getSettings().getRounds();
+        game.setMaxRounds(maxRounds == null ? 0 : maxRounds);
         // Set totals based on who starts
         game.setRedTotal(startingTeam == TeamColor.RED ? 9 : 8);
         game.setBlueTotal(startingTeam == TeamColor.BLUE ? 9 : 8);
