@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
-import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
@@ -160,11 +159,10 @@ public class LobbyRepositoryTest {
         lobby.setHostId(1L);
 
         LobbySettings settings = lobby.getSettings();
-        settings.setDifficulty(Difficulty.HARD);
         settings.setSpymasterTimeLimit(45);
         settings.setSpyTimeLimit(30);
         settings.setRounds(3);
-        settings.setTopics(List.of(Topic.ANIMALS, Topic.SPORTS));
+        settings.setTopics(List.of(Topic.LANGUAGE));
 
         entityManager.persistAndFlush(lobby);
         Long id = lobby.getId();
@@ -172,11 +170,10 @@ public class LobbyRepositoryTest {
         entityManager.clear();
 
         Lobby loaded = entityManager.find(Lobby.class, id);
-        assertEquals(Difficulty.HARD, loaded.getSettings().getDifficulty());
         assertEquals(45, loaded.getSettings().getSpymasterTimeLimit());
         assertEquals(30, loaded.getSettings().getSpyTimeLimit());
         assertEquals(3, loaded.getSettings().getRounds());
-        assertEquals(List.of(Topic.ANIMALS, Topic.SPORTS), loaded.getSettings().getTopics());
+        assertEquals(List.of(Topic.LANGUAGE), loaded.getSettings().getTopics());
     }
 }
 
