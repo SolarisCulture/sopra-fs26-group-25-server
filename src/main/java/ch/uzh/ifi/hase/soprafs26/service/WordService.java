@@ -60,9 +60,20 @@ public class WordService {
 
                 if (response != null) {
                     for (DatamuseWord dw : response) {
-                        // Filter: single words only, reasonable length
-                        if (!dw.word.contains(" ") && dw.word.length() >= 3 && dw.word.length() <= 12) {
-                            topicWords.add(dw.word.toUpperCase());
+                        String word = dw.word;
+
+                        // Remove plural 's' at the end
+                        if (word.endsWith("s") && word.length() > 3) {
+                            word = word.substring(0, word.length() - 1);
+                        }
+
+                        // Filter
+                        if (!word.contains(" ")
+                                && word.length() >= 3
+                                && word.length() <= 12
+                                && word.matches("[a-zA-Z]+")) {
+
+                            topicWords.add(word.toUpperCase());
                         }
                     }
                 }
