@@ -1,6 +1,10 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.event;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ChatMessageDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 
 public class GameEvent {
@@ -13,6 +17,7 @@ public class GameEvent {
     private TeamColor team;
     private Long spymasterId;
     private Long timer;
+    private Map<String, Object> data;
 
     public GameEvent(String type, String lobbyCode) {
         this.type = type;
@@ -29,6 +34,12 @@ public class GameEvent {
         this.type = type;
         this.lobbyCode = lobbyCode;
         this.timer = timer;
+    }
+
+    public GameEvent(String type, String lobbyCode, Map<String, Object> data) {
+        this.type = type;
+        this.lobbyCode = lobbyCode;
+        this.data = data;
     }
 
     public String getType() { return type; }
@@ -88,4 +99,19 @@ public class GameEvent {
         return new GameEvent("TIMER_UPDATE", lobbyCode, timer);
     }
 
+    public Map<String, Object> getData() { return data; }
+    public void setData(Map<String, Object> data) { this.data = data; }
+
+    // Factory method
+    public static GameEvent chatMessage(String lobbyCode, ChatMessageDTO chatMsg) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("type", "CHAT_MESSAGE");
+        data.put("channel", chatMsg.getChannel());
+        data.put("team", chatMsg.getTeam() != null ? chatMsg.getTeam().toString() : null);
+        data.put("senderName", chatMsg.getSenderName());
+        data.put("content", chatMsg.getContent());
+        data.put("timestamp", chatMsg.getTimestamp().toString());
+        
+        return new GameEvent("CHAT_MESSAGE", lobbyCode, data);
+    }
 }

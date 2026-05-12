@@ -63,7 +63,9 @@ public class GameWebSocketHandler {
     @MessageMapping("/{lobbyCode}/chat")
     public void handleChat(@DestinationVariable String lobbyCode, ChatMessageDTO chatMsg) {
         log.info("Chat message in lobby {}: {}", lobbyCode, chatMsg.getContent());
-        chatService.processChatMessage(lobbyCode, chatMsg);
+        // Save and get the message
+        ChatMessageDTO savedMsg = chatService.saveChatMessage(lobbyCode, chatMsg);
+        broadcastChatMessage(lobbyCode, savedMsg);
     }
 
     @MessageMapping("/{lobbyCode}/chat/history") // For requesting chat history due to disconnects
