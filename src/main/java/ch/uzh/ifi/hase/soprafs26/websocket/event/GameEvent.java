@@ -87,4 +87,5 @@ public class GameEvent {
     public static GameEvent timerUpdate(String lobbyCode, Long timer ){
         return new GameEvent("TIMER_UPDATE", lobbyCode, timer);
     }
+
 }
