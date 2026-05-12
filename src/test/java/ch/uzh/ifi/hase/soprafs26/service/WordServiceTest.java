@@ -1,19 +1,17 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
+import ch.uzh.ifi.hase.soprafs26.constant.Topic;
 import org.junit.jupiter.api.Test;
-
 import java.util.HashSet;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class WordServiceTest {
     private WordService wordService = new WordService();
 
     @Test
-    public void getWordsForGame_easy_returns25UniqueWords() {
-        List<String> words = wordService.getWordsForGame(Difficulty.EASY);
+    public void getWordsForGame_returns25UniqueWords() {
+        List<String> words = wordService.getWordsForGame();
 
         assertEquals(25, words.size());
         assertEquals(25, new HashSet<>(words).size()); // all unique
@@ -24,23 +22,46 @@ class WordServiceTest {
         });
     }
 
-    /*@Test
-    public void getWordsForGame_hard_returns25UniqueWords() {
-        List<String> words = wordService.getWordsForGame(Difficulty.HARD);
+    @Test
+    public void getWordsForGame_few_topics() {
+        List<String> words = wordService.getWordsForGame(List.of(Topic.LANGUAGE, Topic.NATURE));
 
         assertEquals(25, words.size());
-        assertEquals(25, new HashSet<>(words).size());
-        words.forEach(word -> System.out.println(word));
+        assertEquals(25, new HashSet<>(words).size()); // all unique
+        words.forEach(word -> {
+            assertNotNull(word);
+            assertFalse(word.isEmpty());
+            System.out.println(word); // see the words in test output
+        });
     }
 
     @Test
-    public void getWordsForGame_allDifficulties_returnDifferentWords() {
-        List<String> easy = wordService.getWordsForGame(Difficulty.EASY);
-        List<String> hard = wordService.getWordsForGame(Difficulty.HARD);
+    public void getWordsForGame_topics_with_space() {
+        List<String> words = wordService.getWordsForGame(List.of(Topic.FANTASY));
 
-        // Not all words should be the same
-        assertNotEquals(easy, hard);
-        System.out.println("EASY: " + easy);
-        System.out.println("HARD: " + hard);
-    }*/
+        assertEquals(25, words.size());
+        assertEquals(25, new HashSet<>(words).size()); // all unique
+        words.forEach(word -> {
+            assertNotNull(word);
+            assertFalse(word.isEmpty());
+            System.out.println(word); // see the words in test output
+        });
+    }
+
+    @Test
+    public void getWordsForGame_topics_timer() {
+        long start = System.currentTimeMillis();
+        List<String> words = wordService.getWordsForGame(List.of(Topic.SCIENCE));
+        long elapsed = System.currentTimeMillis() - start;
+
+        System.out.println("Generation took: " + elapsed + "ms");
+
+        assertEquals(25, words.size());
+        assertEquals(25, new HashSet<>(words).size());
+        words.forEach(word -> {
+            assertNotNull(word);
+            assertFalse(word.isEmpty());
+            System.out.println(word);
+        });
+    }
 }
