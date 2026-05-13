@@ -3,7 +3,6 @@ package ch.uzh.ifi.hase.soprafs26.entity;
 import java.util.ArrayList;
 import java.util.List;
 
-import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
 import ch.uzh.ifi.hase.soprafs26.constant.Topic;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
@@ -11,9 +10,6 @@ import jakarta.persistence.Enumerated;
 
 @Embeddable // This can be reused for 'Game Settings' later on => Lobby entity won't get cluttered if we decide to add new settings
 public class LobbySettings {
-
-    @Enumerated(EnumType.STRING)
-    private Difficulty difficulty = Difficulty.MEDIUM;
 
     private Integer timeLimit = 0; // seconds where 0 = unlimited
     private Integer spymasterTimeLimit;
@@ -28,17 +24,12 @@ public class LobbySettings {
 
 
     public LobbySettings(){ // Constructor with defaults
-        this.difficulty = Difficulty.MEDIUM;
         this.timeLimit = 0;
         this.rounds = 0;
         this.topics = new ArrayList<>();
         this.spymasterTimeLimit = 0;
         this.spyTimeLimit = 0;
     }
-
-    // Getters, Setters
-    public Difficulty getDifficulty() { return difficulty; }
-    public void setDifficulty(Difficulty difficulty) { this.difficulty = difficulty; }
 
     public Integer getTimeLimit() { return timeLimit; }
     public void setTimeLimit(Integer timeLimit) { this.timeLimit = timeLimit; }

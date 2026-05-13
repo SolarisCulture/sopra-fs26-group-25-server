@@ -71,8 +71,11 @@ sonar {
 }
 
 jacocoTestReport {
+    dependsOn test
     reports {
+        html.required = true
         xml.required = true
+        csv.required = true
     }
 }
 
@@ -80,6 +83,7 @@ test {
     useJUnitPlatform()
     testLogging.showStandardStreams = true
     maxParallelForks = 1
+    finalizedBy jacocoTestReport
 }
 
 File secretPropsFile = file('./local.properties')

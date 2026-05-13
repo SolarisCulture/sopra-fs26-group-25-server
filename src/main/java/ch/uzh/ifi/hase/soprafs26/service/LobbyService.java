@@ -322,10 +322,19 @@ public class LobbyService {
         // Validate rounds
         if(request.getRounds() != null) {
             int val = request.getRounds();
-            if(val < 1 || val > 1000) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rounds must be between 1 and 1000");
+            if(val < 0 || val > 1000) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rounds must be between 0 and 1000");
             }
-            settings.setRounds(val);
+            settings.setRounds(val == 0 ? null : val);
+        }
+
+        // set up themes
+        if (request.getTopics() != null) {
+            settings.setTopics(request.getTopics());
+        }
+
+        if (request.getCustomWordList() != null) {
+            settings.setCustomWordList(request.getCustomWordList());
         }
 
         lobbyRepository.save(lobby);
@@ -333,6 +342,8 @@ public class LobbyService {
         settingsData.put("spymasterTimeLimit", settings.getSpymasterTimeLimit());
         settingsData.put("spyTimeLimit", settings.getSpyTimeLimit());
         settingsData.put("rounds", settings.getRounds());
+        settingsData.put("themes", settings.getTopics());
+        settingsData.put("customWordList", settings.getCustomWordList());
 
         lobbyWebSocketHandler.broadcastSettingsUpdated(lobbyCode, settingsData);
     }

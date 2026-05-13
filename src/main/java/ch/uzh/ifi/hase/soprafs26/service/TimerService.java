@@ -51,13 +51,13 @@ public class TimerService {
         return timer.getRemainingSeconds(LocalDateTime.now());
     }
 
-    @Scheduled(fixedRate = 1000) // Still every second - now fast!
+    @Scheduled(fixedRate = 1000)
     public void checkTimers() {
         if (activeTimers.isEmpty()) return; // Nothing to do
         
         LocalDateTime now = LocalDateTime.now();
         
-        // Iterate over in-memory timers - NO DATABASE QUERIES!
+        // Iterate over in-memory timers
         for (Map.Entry<String, GameTimer> entry : activeTimers.entrySet()) {
             String lobbyCode = entry.getKey();
             GameTimer timer = entry.getValue();

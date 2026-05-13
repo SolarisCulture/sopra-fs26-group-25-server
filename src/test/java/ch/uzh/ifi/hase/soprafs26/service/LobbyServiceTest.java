@@ -758,7 +758,7 @@ public class LobbyServiceTest {
         when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(lobby));
 
         UpdateLobbySettingsRequestDTO request = new UpdateLobbySettingsRequestDTO();
-        request.setRounds(0); // min is 1
+        request.setRounds(-1); 
 
         // When/Then
         assertThrows(ResponseStatusException.class,
