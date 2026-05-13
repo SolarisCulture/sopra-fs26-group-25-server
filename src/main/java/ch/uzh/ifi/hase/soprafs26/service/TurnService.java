@@ -253,6 +253,7 @@ public class TurnService {
         turn.setClue(null);
         turn.setGuessesRemaining(0);
         turn.setPhase(TurnPhase.SPYMASTER_TURN);
+        turn.setCurrentTeamColor(penaltyTeam);
         turn.setStartTime(LocalDateTime.now());
 
         turnRepository.saveAndFlush(turn);
