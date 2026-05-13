@@ -303,6 +303,43 @@ public class TurnServiceTest {
     }
 
     @Test
+    public void submitReportedGuess_revealsOpposingOwnCardAndResetsReportedTurn() {
+        WordCard card = setupGuessTest(CardType.AGENTBLUE, "OCEAN");
+        Clue clue = new Clue();
+        clue.setWord("water");
+        clue.setCount(1);
+        testTurn.setClue(clue);
+
+        turnService.submitReportedGuess("ABC123", new GuessDTO("OCEAN"));
+
+        assertTrue(card.isRevealed());
+        assertEquals(1, testGame.getBlueScore());
+        assertEquals(TeamColor.BLUE, testTurn.getCurrentTeamColor());
+        assertEquals(TurnPhase.SPYMASTER_TURN, testTurn.getPhase());
+        assertEquals(0, testTurn.getGuessesRemaining());
+        assertEquals(null, testTurn.getClue());
+
+        verify(timerService).startTimer(eq("ABC123"), eq(120L));
+        verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.CARD_REVEALED), any(GameBoardDTO.class), any(GameBoardDTO.class));
+    }
+
+    @Test
+    public void submitReportedGuess_reportedTeamCard_throwsBadRequest() {
+        setupGuessTest(CardType.AGENTRED, "APPLE");
+        Clue clue = new Clue();
+        clue.setWord("fruit");
+        clue.setCount(1);
+        testTurn.setClue(clue);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> turnService.submitReportedGuess("ABC123", new GuessDTO("APPLE")));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
     public void submitGuess_allCardsFound_teamWins() { 
         setupGuessTest(CardType.AGENTRED, "APPLE");
         testGame.setRedScore(8);  // one away from winning
