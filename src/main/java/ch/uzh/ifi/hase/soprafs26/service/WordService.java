@@ -55,17 +55,12 @@ public class WordService {
             try {
 
                 String encoded = URLEncoder.encode(keyword, StandardCharsets.UTF_8);
-                String url = DATAMUSE_URL + "?ml=" + encoded;
+                String url = DATAMUSE_URL + "?rel_trg" + encoded;
                 DatamuseWord[] response = restTemplate.getForObject(url, DatamuseWord[].class);
 
                 if (response != null) {
                     for (DatamuseWord dw : response) {
                         String word = dw.word;
-
-                        // Remove plural 's' at the end
-                        if (word.endsWith("s") && word.length() > 3) {
-                            word = word.substring(0, word.length() - 1);
-                        }
 
                         // Filter
                         if (!word.contains(" ")
