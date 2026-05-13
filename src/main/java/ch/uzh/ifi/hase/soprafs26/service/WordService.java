@@ -15,9 +15,12 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class WordService {
@@ -42,6 +45,7 @@ public class WordService {
         return getRandomWordsFromFile(BOARD_SIZE);
     }
 
+    // called when no file uploaded
     public List<String> getWordsForGame(List<Topic> topics) {
         if (topics == null || topics.isEmpty() || (topics.size() == 1 && topics.contains(Topic.STANDARD))) {
             return getRandomWordsFromFile(BOARD_SIZE);
@@ -69,6 +73,79 @@ public class WordService {
         List<String> boardWords = new ArrayList<>(words);
         Collections.shuffle(boardWords);
         return boardWords.subList(0, Math.min(BOARD_SIZE, boardWords.size()));
+    }
+
+
+    // called when file uploaded
+    public List<String> getWordsForGame(List<Topic> topics, String customWordList) {
+        System.out.println("=== WORD GENERATION ===");
+        System.out.println("Topics: " + topics);
+        System.out.println("customWordList null? " + (customWordList == null));
+        System.out.println("customWordList value: " + customWordList);
+
+        Set<String> allWords = new HashSet<>();
+
+        if (customWordList != null && !customWordList.isEmpty()) {
+            allWords.addAll(parseCustomWordList(customWordList));
+        }
+
+        for (Topic topic : topics) {
+            if (topic == Topic.STANDARD) continue;
+
+            // All other topics — fetch from Datamuse using their keywords
+            for (String keyword : topic.getKeywords()) {
+                try {
+                    String encoded = URLEncoder.encode(keyword, StandardCharsets.UTF_8);
+                    String url = DATAMUSE_URL + "?rel_trg=" + encoded;
+                    DatamuseWord[] response = restTemplate.getForObject(url, DatamuseWord[].class);
+                    if (response != null) {
+                        for (DatamuseWord dw : response) {
+                            String word = dw.word;
+                            if (!word.contains(" ")
+                                    && word.length() >= 3
+                                    && word.length() <= 12
+                                    && word.matches("[a-zA-Z]+")) {
+                                allWords.add(word.toUpperCase());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Datamuse failed for '{}': {}", keyword, e.getMessage());
+                }
+            }
+        }
+
+        // Fallback: general word list
+        if (allWords.size() < BOARD_SIZE) {
+            for (String word : getRandomWordsFromFile(BOARD_SIZE - allWords.size())) {
+                if (allWords.add(word) && allWords.size() >= BOARD_SIZE) break;
+            }
+        }
+
+        List<String> boardWords = new ArrayList<>(allWords);
+        Collections.shuffle(boardWords);
+        return boardWords.subList(0, BOARD_SIZE);
+    }
+
+    private List<String> parseCustomWordList(String customWordListJson) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            List<String> words = mapper.readValue(
+                    customWordListJson,
+                    new TypeReference<List<String>>() {}
+            );
+            return words.stream()
+                    .map(String::trim)
+                    .map(String::toUpperCase)
+                    .filter(w -> !w.isEmpty())
+                    .filter(w -> !w.contains(" "))
+                    .filter(w -> w.matches("[a-zA-Z]+"))
+                    .distinct()
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Failed to parse custom word list: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     // ==================== Datamuse ====================
@@ -175,12 +252,12 @@ public class WordService {
     // ==================== General word list ====================
 
     private List<String> getRandomWordsFromFile(int count) {
-        List<String> words = loadWordsFromFile();
+        List<String> words = load400WordsFromFile();
         Collections.shuffle(words);
         return words.subList(0, Math.min(count, words.size()));
     }
 
-    private List<String> loadWordsFromFile() {
+    private List<String> load400WordsFromFile() {
         try {
             InputStream inputStream = getClass()
                     .getClassLoader()

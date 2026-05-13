@@ -28,7 +28,8 @@ public enum Topic {
     SPORT("Sport", List.of("Athletes", "Disciplines", "Events", "Records")),
     BUSINESS("Business", List.of("Companies", "Businesspeople", "Products", "Professions")),
     TECHNOLOGY_GAMES("Technology & Games", List.of("IT", "Inventions", "Gaming", "Programming", "Algorithms")),
-    STANDARD("Standard", List.of());
+    STANDARD("Standard", List.of()),
+    CUSTOM_WORD_LIST("Custom Word List", List.of());
 
     private final String label;
     private final List<String> keywords;

@@ -1,21 +1,52 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Topic;
+import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import org.springframework.http.MediaType;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+@SpringBootTest
+@AutoConfigureMockMvc
+class WordServiceTest {
 
-    class WordServiceTest {
+    @Autowired
+    private MockMvc mockMvc;
 
+    @Autowired
+    private LobbyRepository lobbyRepository;
+
+    @Autowired
+    private LobbyService lobbyService;
+
+    @Autowired
     private WordService wordService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private String lobbyCode;
+
 
     @BeforeEach
     void setup() {
         wordService = new WordService();
         wordService.loadWordLists(); // triggers @PostConstruct manually
+        lobbyRepository.deleteAll();
+        Lobby lobby = lobbyService.createLobby("TestHost");
+        lobbyCode = lobby.getLobbyCode();
     }
 
     // ==================== getWordsForGame() — no topics ====================
@@ -260,4 +291,234 @@ import static org.junit.jupiter.api.Assertions.*;
             System.out.println(word);
         });
     }
+
+    // ==================== Settings Update — customWordList stored ====================
+        @Test
+        void updateSettings_withCustomWordList_storesInDatabase() throws Exception {
+            String customWords = "[\"CAT\",\"DOG\",\"MOM\",\"DAD\",\"END\",\"TRAIN\",\"TABLE\"," +
+                    "\"MOUSE\",\"COMPUTER\",\"CHAIR\",\"TREE\",\"PLANT\",\"FLOWER\",\"KISS\"," +
+                    "\"HUG\",\"COW\",\"FINGER\",\"FACE\",\"LEG\",\"NOSE\",\"NODE\",\"RING\"," +
+                    "\"QUESTION\",\"BLIND\",\"SUN\"]";
+
+            String payload = "{" +
+                    "\"spymasterTimeLimit\": 0," +
+                    "\"spyTimeLimit\": 0," +
+                    "\"rounds\": 0," +
+                    "\"topics\": [\"CUSTOM_WORD_LIST\"]," +
+                    "\"customWordList\": " + objectMapper.writeValueAsString(customWords) +
+                    "}";
+
+            mockMvc.perform(put("/api/lobbies/" + lobbyCode)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(payload))
+                    .andExpect(status().isOk());
+
+            // Verify it's stored
+            Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow();
+            assertNotNull(lobby.getSettings().getCustomWordList());
+            assertTrue(lobby.getSettings().getCustomWordList().contains("CAT"));
+            assertTrue(lobby.getSettings().getCustomWordList().contains("DOG"));
+        }
+
+        @Test
+        void updateSettings_withNullCustomWordList_doesNotCrash() throws Exception {
+            String payload = "{" +
+                    "\"spymasterTimeLimit\": 60," +
+                    "\"spyTimeLimit\": 30," +
+                    "\"rounds\": 5," +
+                    "\"topics\": [\"SCIENCE\"]," +
+                    "\"customWordList\": null" +
+                    "}";
+
+            mockMvc.perform(put("/api/lobbies/" + lobbyCode)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(payload))
+                    .andExpect(status().isOk());
+
+            Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow();
+            assertNull(lobby.getSettings().getCustomWordList());
+        }
+
+        @Test
+        void updateSettings_withoutCustomWordListField_preservesExisting() throws Exception {
+            // First, set custom words
+            Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow();
+            lobby.getSettings().setCustomWordList("[\"EXISTING\",\"WORDS\"]");
+            lobbyRepository.save(lobby);
+
+            // Then update only timers (no customWordList in payload)
+            String payload = "{" +
+                    "\"spymasterTimeLimit\": 60," +
+                    "\"spyTimeLimit\": 30," +
+                    "\"rounds\": 5," +
+                    "\"topics\": [\"CUSTOM_WORD_LIST\"]" +
+                    "}";
+
+            mockMvc.perform(put("/api/lobbies/" + lobbyCode)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(payload))
+                    .andExpect(status().isOk());
+
+            // customWordList should still be there
+            lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow();
+            assertNotNull(lobby.getSettings().getCustomWordList());
+            assertTrue(lobby.getSettings().getCustomWordList().contains("EXISTING"));
+        }
+
+        // ==================== GET — customWordList returned ====================
+
+        @Test
+        void getLobby_returnsCustomWordListInSettings() throws Exception {
+            // Store custom words
+            Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElseThrow();
+            String customWords = "[\"ALPHA\",\"BETA\",\"GAMMA\"]";
+            lobby.getSettings().setCustomWordList(customWords);
+            lobbyRepository.save(lobby);
+
+            // GET the lobby and check response includes customWordList
+            String response = mockMvc.perform(get("/api/lobbies/" + lobbyCode))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+
+            assertTrue(response.contains("customWordList"),
+                    "Response should contain customWordList field. Got: " + response);
+            assertTrue(response.contains("ALPHA"),
+                    "Response should contain custom words. Got: " + response);
+        }
+
+        // ==================== WordService — uses custom words ====================
+
+        @Test
+        void wordService_withCustomWordList_usesCustomWords() {
+            String customWords = "[\"CAT\",\"DOG\",\"MOM\",\"DAD\",\"END\",\"TRAIN\",\"TABLE\"," +
+                    "\"MOUSE\",\"COMPUTER\",\"CHAIR\",\"TREE\",\"PLANT\",\"FLOWER\",\"KISS\"," +
+                    "\"HUG\",\"COW\",\"FINGER\",\"FACE\",\"LEG\",\"NOSE\",\"NODE\",\"RING\"," +
+                    "\"QUESTION\",\"BLIND\",\"SUN\"]";
+
+            List<String> words = wordService.getWordsForGame(
+                    List.of(Topic.CUSTOM_WORD_LIST), customWords
+            );
+
+            assertEquals(25, words.size());
+            // All words should come from the custom list
+            List<String> customList = List.of("CAT", "DOG", "MOM", "DAD", "END", "TRAIN", "TABLE",
+                    "MOUSE", "COMPUTER", "CHAIR", "TREE", "PLANT", "FLOWER", "KISS",
+                    "HUG", "COW", "FINGER", "FACE", "LEG", "NOSE", "NODE", "RING",
+                    "QUESTION", "BLIND", "SUN");
+            for (String word : words) {
+                assertTrue(customList.contains(word),
+                        "Word should be from custom list: " + word);
+            }
+        }
+
+        @Test
+        void wordService_withCustomWordListAndOtherTopics_mixesWords() {
+            String customWords = "[\"apLpha\",\"BETA\",\"gamma\",\"delta\",\"EPSILON\"]";
+
+            List<String> words = wordService.getWordsForGame(Collections.emptyList(), customWords);
+
+            assertEquals(25, words.size());
+            // Should contain at least some custom words
+            boolean hasCustom = words.stream().anyMatch(
+                    w -> List.of("ALPHA", "BETA", "GAMMA", "DELTA", "EPSILON").contains(w)
+            );
+            assertTrue(hasCustom, "Board should contain some custom words");
+        }
+
+        @Test
+        void wordService_withCustomWordListNull_fallsToStandard() {
+            List<String> words = wordService.getWordsForGame(
+                    List.of(Topic.CUSTOM_WORD_LIST), null
+            );
+
+            assertEquals(25, words.size());
+            // Should still work — falls back to standard words
+        }
+
+        @Test
+        void wordService_withCustomWordListEmpty_fallsToStandard() {
+            List<String> words = wordService.getWordsForGame(
+                    List.of(Topic.CUSTOM_WORD_LIST), ""
+            );
+
+            assertEquals(25, words.size());
+        }
+
+        @Test
+        void wordService_withCustomWordListTooFew_fillsFromStandard() {
+            String fewWords = "[\"CAT\",\"DOG\",\"TREE\"]";
+
+            List<String> words = wordService.getWordsForGame(
+                    Collections.emptyList(), fewWords
+            );
+
+            assertEquals(25, words.size());
+            // Should contain the 3 custom words plus 22 standard words
+            assertTrue(words.contains("CAT"));
+            assertTrue(words.contains("DOG"));
+            assertTrue(words.contains("TREE"));
+        }
+
+        @Test
+        void wordService_withCustomWordListExactly25_usesAll() {
+            String exactly25 = "[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\"," +
+                    "\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\",\"S\",\"T\"," +
+                    "\"U\",\"V\",\"W\",\"X\",\"Y\"]";
+
+            List<String> words = wordService.getWordsForGame(
+                    List.of(Topic.CUSTOM_WORD_LIST), exactly25
+            );
+
+            assertEquals(25, words.size());
+        }
+
+        @Test
+        void wordService_withInvalidJson_fallsToStandard() {
+            String invalidJson = "not valid json at all";
+
+            List<String> words = wordService.getWordsForGame(
+                    List.of(Topic.CUSTOM_WORD_LIST), invalidJson
+            );
+
+            assertEquals(25, words.size());
+            // Should not crash, just use fallback
+        }
+
+        @Test
+        void wordService_customWordsAreUppercase() {
+            String mixedCase = "[\"cat\",\"Dog\",\"TREE\",\"flower\",\"SUN\"," +
+                    "\"moon\",\"star\",\"rain\",\"snow\",\"wind\"," +
+                    "\"fire\",\"ice\",\"rock\",\"sand\",\"wave\"," +
+                    "\"lake\",\"hill\",\"road\",\"gate\",\"wall\"," +
+                    "\"door\",\"bell\",\"lamp\",\"desk\",\"book\"]";
+
+            List<String> words = wordService.getWordsForGame(
+                    List.of(Topic.CUSTOM_WORD_LIST), mixedCase
+            );
+
+            for (String word : words) {
+                assertEquals(word.toUpperCase(), word,
+                        "Word should be uppercase: " + word);
+            }
+        }
+
+        @Test
+        void wordService_customWordsDeduplicated() {
+            String duplicates = "[\"CAT\",\"CAT\",\"DOG\",\"DOG\",\"CAT\"," +
+                    "\"TREE\",\"TREE\",\"SUN\",\"MOON\",\"STAR\"," +
+                    "\"RAIN\",\"SNOW\",\"WIND\",\"FIRE\",\"ICE\"," +
+                    "\"ROCK\",\"SAND\",\"WAVE\",\"LAKE\",\"HILL\"," +
+                    "\"ROAD\",\"GATE\",\"WALL\",\"DOOR\",\"BELL\"," +
+                    "\"LAMP\",\"DESK\",\"BOOK\",\"PEN\",\"CUP\"]";
+
+            List<String> words = wordService.getWordsForGame(
+                    List.of(Topic.CUSTOM_WORD_LIST), duplicates
+            );
+
+            assertEquals(25, words.size());
+            assertEquals(words.size(), new java.util.HashSet<>(words).size(),
+                    "Board should have no duplicate words");
+        }
 }
