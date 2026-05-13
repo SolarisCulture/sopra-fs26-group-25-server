@@ -15,9 +15,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Required for stateless API and WebSockets
+            .csrf(csrf -> csrf.disable())  // Required for WebSockets + stateless API
+            .cors(cors -> {})  // Enable CORS with the bean defined below
             .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll() 
+                .anyRequest().permitAll()
             );
         return http.build();
     }
@@ -30,7 +31,7 @@ public class SecurityConfig {
                 registry.addMapping("/**")
                     .allowedOrigins(
                         "https://sopra-fs26-group-25-client.vercel.app",
-                        "http://localhost:3000" 
+                        "http://localhost:3000"
                     )
                     .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                     .allowedHeaders("*")
