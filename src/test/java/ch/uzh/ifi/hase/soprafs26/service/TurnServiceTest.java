@@ -314,7 +314,7 @@ public class TurnServiceTest {
 
         assertTrue(card.isRevealed());
         assertEquals(1, testGame.getBlueScore());
-        assertEquals(TeamColor.RED, testTurn.getCurrentTeamColor());
+        assertEquals(TeamColor.BLUE, testTurn.getCurrentTeamColor());
         assertEquals(TurnPhase.SPYMASTER_TURN, testTurn.getPhase());
         assertEquals(0, testTurn.getGuessesRemaining());
         assertEquals(null, testTurn.getClue());
