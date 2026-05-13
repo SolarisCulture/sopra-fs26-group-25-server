@@ -108,6 +108,7 @@ public class GameService {
         game = gameRepository.save(game);
 
         lobby.setGame(game);
+        lobby.setLobbyStatus(LobbyStatus.IN_PROGRESS);
         game.setLobby(lobby);
 
         game = gameRepository.save(game);
@@ -291,7 +292,6 @@ public class GameService {
 
         // Maybe remove later/add check for .PAUSED for restarting game during pause
         if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
-            System.out.println("IT GOT INTO THE IF STATEMENT IN BACKTOLOBBY!");
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished yet!");
         }
 
@@ -299,8 +299,6 @@ public class GameService {
         lobby.setLobbyStatus(LobbyStatus.WAITING);
 
         lobby.setGame(null);
-
-        System.out.println("LobbyStatus (after): " + lobby.getLobbyStatus());
 
         lobbyRepository.save(lobby);
 

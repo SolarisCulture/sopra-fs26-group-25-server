@@ -30,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.LobbySettings;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
@@ -37,6 +38,7 @@ import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.UpdateLobbySettingsRequestDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
+import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 
 public class LobbyServiceTest {
@@ -49,6 +51,12 @@ public class LobbyServiceTest {
 
 	@Mock
 	private LobbyWebSocketHandler lobbyWebSocketHandler;
+
+	@Mock
+	private GameWebSocketHandler gameWebSocketHandler;
+
+    @Mock
+    private LobbyPresenceService lobbyPresenceService;
 
 	@InjectMocks
 	private LobbyService lobbyService;
@@ -465,6 +473,24 @@ public class LobbyServiceTest {
         assertThrows(ResponseStatusException.class, () -> {
             lobbyService.leaveLobby("ABC123", 99L);
         });
+    }
+
+    @Test
+    public void handleGameDisconnectTimeout_inProgressGame_removesPlayerAndBroadcastsGameUpdate() {
+        Game game = new Game();
+        testLobby.setGame(game);
+        testLobby.setLobbyStatus(LobbyStatus.IN_PROGRESS);
+        
+        // Player has no active sessions
+        when(lobbyPresenceService.hasActiveSessions("123", 2L)).thenReturn(false);
+        when(lobbyRepository.findByLobbyCode("123")).thenReturn(Optional.of(testLobby));
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(testLobby);
+
+        lobbyService.handleGameDisconnectTimeout("123", 2L);
+
+        assertFalse(testLobby.getPlayerList().stream().anyMatch(player -> player.getId().equals(2L)));
+        verify(lobbyWebSocketHandler).broadcastPlayerLeft(eq("123"), any(Player.class));
+        verify(gameWebSocketHandler).broadcastReturningToLobbyAfterDisconnect("123");
     }
 
 	// assignTeam

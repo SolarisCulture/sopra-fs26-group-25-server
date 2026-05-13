@@ -11,9 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.LobbyStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.entity.LobbySettings;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
@@ -21,6 +23,7 @@ import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.UpdateLobbySettingsRequestDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.mapper.DTOMapper;
+import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.LobbyWebSocketHandler;
 
 @Service
@@ -29,11 +32,15 @@ public class LobbyService {
 
     private final LobbyRepository lobbyRepository;
     private final LobbyWebSocketHandler lobbyWebSocketHandler;
+    private final GameWebSocketHandler gameWebSocketHandler;
     private static final String lobbyDoesNotExistString = "Lobby doesn't exist!";
+    private final LobbyPresenceService lobbyPresenceService;
 
-    public LobbyService(LobbyRepository lobbyRepository, LobbyWebSocketHandler lobbyWebSocketHandler) {
+    public LobbyService(LobbyRepository lobbyRepository, LobbyWebSocketHandler lobbyWebSocketHandler, GameWebSocketHandler gameWebSocketHandler, LobbyPresenceService lobbyPresenceService) {
         this.lobbyRepository = lobbyRepository;
         this.lobbyWebSocketHandler = lobbyWebSocketHandler;
+        this.gameWebSocketHandler = gameWebSocketHandler;
+        this.lobbyPresenceService = lobbyPresenceService;
     }
 
     public Lobby createLobby(String hostUsername) {
@@ -135,6 +142,70 @@ public class LobbyService {
             Player newHost = lobby.getPlayerById(lobby.getHostId());
             lobbyWebSocketHandler.broadcastHostChanged(lobbyCode, newHost);
         }
+    }
+
+    public void leaveLobbyAfterDisconnect(String lobbyCode, Long playerId) {
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElse(null);
+        if (lobby == null || lobby.getLobbyStatus() != LobbyStatus.WAITING) {
+            return;
+        }
+
+        if (lobby.getPlayerById(playerId) == null) {
+            return;
+        }
+
+        leaveLobby(lobbyCode, playerId);
+    }
+
+    @Transactional
+    public void handleGameDisconnectTimeout(String lobbyCode, Long playerId) {
+        Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElse(null);
+        if (lobby == null || lobby.getGame() == null) return;
+        
+        // Check if player has reconnected
+        if (lobbyPresenceService.hasActiveSessions(lobbyCode, playerId)) {
+            return; // Player reconnected within timeout
+        }
+        
+        // Remove the disconnected player from lobby
+        leaveLobby(lobbyCode, playerId);
+        
+        // Refresh lobby reference after removal
+        lobby = lobbyRepository.findByLobbyCode(lobbyCode).orElse(null);
+        if (lobby == null || lobby.getGame() == null) return;
+        
+        // Check if all roles are still occupied
+        boolean redSpymasterCheck = lobby.getPlayerList().stream()
+            .filter(p -> p.getRole() == Role.SPYMASTER)
+            .filter(p -> p.getTeam() == TeamColor.RED)
+            .count() == 1;
+        boolean blueSpymasterCheck = lobby.getPlayerList().stream()
+            .filter(p -> p.getRole() == Role.SPYMASTER)
+            .filter(p -> p.getTeam() == TeamColor.BLUE)
+            .count() == 1;
+        boolean redSpyCheck = lobby.getPlayerList().stream()
+            .filter(p -> p.getRole() == Role.SPY)
+            .filter(p -> p.getTeam() == TeamColor.RED)
+            .count() >= 1;
+        boolean blueSpyCheck = lobby.getPlayerList().stream()
+            .filter(p -> p.getRole() == Role.SPY)
+            .filter(p -> p.getTeam() == TeamColor.BLUE)
+            .count() >= 1;
+
+        // If all roles are still filled, game can continue
+        if (redSpyCheck && redSpymasterCheck && blueSpyCheck && blueSpymasterCheck) {
+            gameWebSocketHandler.broadcastPlayersUpdated(lobbyCode);
+            return;
+        }
+        
+        // Otherwise, game cannot continue - forfeit
+        Game game = lobby.getGame();
+        game.setStatus(GameStatus.ARCHIVED);
+        lobby.setLobbyStatus(LobbyStatus.WAITING);
+        lobby.setGame(null);
+        lobbyRepository.save(lobby);
+        
+        gameWebSocketHandler.broadcastReturningToLobbyAfterDisconnect(lobbyCode);
     }
 
     public void assignTeam(String lobbyCode, Long playerID, TeamColor team) {          

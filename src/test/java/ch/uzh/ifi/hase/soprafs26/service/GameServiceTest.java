@@ -91,6 +91,7 @@ class GameServiceTest {
         assertNotNull(game.getBoard());
         assertEquals(25, game.getBoard().getCards().size());
         assertEquals(GameStatus.ACTIVE, game.getStatus());
+        assertEquals(LobbyStatus.IN_PROGRESS, testLobby.getLobbyStatus());
         assertEquals(TurnPhase.SPYMASTER_TURN, game.getCurrentTurn().getPhase());
 
         // Verify board has correct card type distribution

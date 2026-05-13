@@ -1,5 +1,7 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 
+import java.util.HashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -11,6 +13,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
 import ch.uzh.ifi.hase.soprafs26.rest.dto.SubscribeDTO;
+import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
 
 
@@ -21,10 +24,12 @@ public class LobbyWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(LobbyWebSocketHandler.class); // For debugging and monitoring => should print to server console
 
     private final SimpMessagingTemplate messagingTemplate; // The tool that sends messages over WebSocket
+    private final LobbyPresenceService lobbyPresenceService;
 
     // Constructor injection because SonarQube complained about @Autowired => easier to mock and immutability possible with "final"
-    public LobbyWebSocketHandler(SimpMessagingTemplate messagingTemplate){
+    public LobbyWebSocketHandler(SimpMessagingTemplate messagingTemplate, LobbyPresenceService lobbyPresenceService){
         this.messagingTemplate = messagingTemplate;
+        this.lobbyPresenceService = lobbyPresenceService;
     }
 
     public void broadcastLobbyCreated(String lobbyCode, Object lobbyData){
@@ -80,7 +85,12 @@ public class LobbyWebSocketHandler {
         }
 
         if(playerId != null) {
+            if (accessor.getSessionAttributes() == null) {
+                accessor.setSessionAttributes(new HashMap<>());
+            }
+            accessor.getSessionAttributes().put("lobbyCode", lobbyCode);
             accessor.getSessionAttributes().put("playerId", playerId);
+            lobbyPresenceService.registerConnection(accessor.getSessionId(), lobbyCode, playerId);
             log.info("Stored playerId {} for session {}", playerId, accessor.getSessionId());
         } else {
             log.warn("No playerId in subscription payload");
