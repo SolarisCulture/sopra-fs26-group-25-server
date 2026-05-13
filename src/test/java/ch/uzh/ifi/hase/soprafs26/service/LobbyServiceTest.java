@@ -55,6 +55,9 @@ public class LobbyServiceTest {
 	@Mock
 	private GameWebSocketHandler gameWebSocketHandler;
 
+    @Mock
+    private LobbyPresenceService lobbyPresenceService;
+
 	@InjectMocks
 	private LobbyService lobbyService;
 
@@ -473,17 +476,21 @@ public class LobbyServiceTest {
     }
 
     @Test
-    public void leaveGameAfterDisconnect_inProgressGame_removesPlayerAndBroadcastsGameUpdate() {
+    public void handleGameDisconnectTimeout_inProgressGame_removesPlayerAndBroadcastsGameUpdate() {
         Game game = new Game();
         testLobby.setGame(game);
         testLobby.setLobbyStatus(LobbyStatus.IN_PROGRESS);
+        
+        // Player has no active sessions
+        when(lobbyPresenceService.hasActiveSessions("123", 2L)).thenReturn(false);
         when(lobbyRepository.findByLobbyCode("123")).thenReturn(Optional.of(testLobby));
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(testLobby);
 
-        lobbyService.leaveGameAfterDisconnect("123", 2L);
+        lobbyService.handleGameDisconnectTimeout("123", 2L);
 
         assertFalse(testLobby.getPlayerList().stream().anyMatch(player -> player.getId().equals(2L)));
         verify(lobbyWebSocketHandler).broadcastPlayerLeft(eq("123"), any(Player.class));
-        verify(gameWebSocketHandler).broadcastPlayersUpdated("123");
+        verify(gameWebSocketHandler).broadcastReturningToLobbyAfterDisconnect("123");
     }
 
 	// assignTeam
