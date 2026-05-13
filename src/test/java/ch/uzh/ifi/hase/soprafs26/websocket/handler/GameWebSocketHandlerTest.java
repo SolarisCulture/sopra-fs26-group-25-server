@@ -67,6 +67,15 @@ class GameWebSocketHandlerTest {
         verify(turnService).submitGuess("ABC123", guessDTO);
     }
 
+    @Test
+    public void handleReportedGuess_callsSubmitReportedGuess() {
+        GuessDTO guessDTO = new GuessDTO("APPLE");
+
+        gameWebSocketHandler.handleReportedGuess("ABC123", guessDTO);
+
+        verify(turnService).submitReportedGuess("ABC123", guessDTO);
+    }
+
     // ==================== handleEndTurn tests ====================
 
     @Test
