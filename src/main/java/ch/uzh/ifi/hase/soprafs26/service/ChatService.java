@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ChatMessageDTO;
@@ -36,23 +35,15 @@ public class ChatService {
         if (chatMsg.getTimestamp() == null) {
             chatMsg.setTimestamp(LocalDateTime.now());
         }
+        chatMsg.setChannel("GLOBAL");
         gameChats.computeIfAbsent(gameId, k -> Collections.synchronizedList(new ArrayList<>())).add(chatMsg);
         return chatMsg;
     }
 
-    public List<ChatMessageDTO> getHistory(String lobbyCode, TeamColor playerTeam, boolean isSpymaster) {
+    public List<ChatMessageDTO> getHistory(String lobbyCode) {
         Lobby lobby = lobbyRepository.findByLobbyCode(lobbyCode)
             .orElseThrow(() -> new IllegalArgumentException("Lobby not found: " + lobbyCode));
         Long gameId = lobby.getGame().getId();
-        List<ChatMessageDTO> all = gameChats.getOrDefault(gameId, Collections.emptyList());
-        List<ChatMessageDTO> filtered = new ArrayList<>();
-        for (ChatMessageDTO msg : all) {
-            if ("TEAM".equals(msg.getChannel()) && msg.getTeam() == playerTeam) {
-                filtered.add(msg);
-            } else if ("SPYMASTER".equals(msg.getChannel()) && isSpymaster) {
-                filtered.add(msg);
-            }
-        }
-        return filtered;
+        return gameChats.getOrDefault(gameId, Collections.emptyList());
     }
 }

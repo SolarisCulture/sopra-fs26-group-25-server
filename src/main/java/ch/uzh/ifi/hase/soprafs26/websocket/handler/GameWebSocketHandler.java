@@ -1,20 +1,14 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 
-import java.util.List;
-import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import ch.uzh.ifi.hase.soprafs26.constant.EventType;
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ChatMessageDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
@@ -68,28 +62,6 @@ public class GameWebSocketHandler {
         broadcastChatMessage(lobbyCode, savedMsg);
     }
 
-    @MessageMapping("/{lobbyCode}/chat/history") // For requesting chat history due to disconnects
-    public void requestChatHistory(@DestinationVariable String lobbyCode,
-                                @Payload Map<String, Object> payload,
-                                SimpMessageHeaderAccessor headerAccessor) {
-        try {
-            String teamStr = (String) payload.get("team");
-            boolean isSpymaster = (boolean) payload.get("isSpymaster");
-            TeamColor team = TeamColor.valueOf(teamStr.toUpperCase());
-
-            List<ChatMessageDTO> history = chatService.getHistory(lobbyCode, team, isSpymaster);
-            ChatMessageDTO response = new ChatMessageDTO();
-            response.setType("CHAT_HISTORY");
-            response.setHistory(history);
-
-            messagingTemplate.convertAndSendToUser(headerAccessor.getSessionId(), "/queue/chat-history", response);
-        } catch (Exception e) {
-            log.error("Failed to get chat history", e);
-        }
-    }
-
-
-
     // ==================== Broadcasting ====================
     public void broadcastGameStarted(String lobbyCode, GameBoardDTO spymasterBoard, GameBoardDTO operativeBoard) {
         broadcastGameState(lobbyCode, EventType.GAME_STARTED, spymasterBoard, operativeBoard);
@@ -142,8 +114,7 @@ public class GameWebSocketHandler {
 
     public void broadcastChatMessage(String lobbyCode, ChatMessageDTO chatMsg) {
         log.info("Broadcasting CHAT_MESSAGE for lobby: {}", lobbyCode);
-        GameEvent chatEvent = GameEvent.chatMessage(lobbyCode, chatMsg);
-        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", chatEvent);
-        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", chatEvent);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", chatMsg);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", chatMsg);
     }
 }

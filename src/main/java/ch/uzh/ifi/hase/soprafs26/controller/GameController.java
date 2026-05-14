@@ -1,6 +1,7 @@
 package ch.uzh.ifi.hase.soprafs26.controller;
 
-import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,9 +12,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ChatMessageDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.service.ChatService;
 import ch.uzh.ifi.hase.soprafs26.service.GameService;
 import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 
@@ -25,11 +29,13 @@ public class GameController {
 
     private final TurnService turnService;
     private final GameService gameService;
+    private final ChatService chatService;
 
 
-    public GameController(GameService gameService, TurnService turnService) {
+    public GameController(GameService gameService, TurnService turnService, ChatService chatService) {
         this.gameService = gameService;
         this.turnService = turnService;
+        this.chatService = chatService;
     }
 
     // Host calls this to start the game — board sent via WebSocket
@@ -86,5 +92,10 @@ public class GameController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void endTurn(@PathVariable String lobbyCode) {
         turnService.endTurn(lobbyCode, true);
+    }
+
+    @GetMapping("/api/games/{lobbyCode}/chat-history")
+    public List<ChatMessageDTO> getChatHistory(@PathVariable String lobbyCode) {
+        return chatService.getHistory(lobbyCode);
     }
 }

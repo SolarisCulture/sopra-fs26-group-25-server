@@ -1,9 +1,11 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,20 +16,16 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ChatMessageDTO;
-import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 
 @ExtendWith(MockitoExtension.class)
-public class ChatServiceTest {
-    @Mock
-    private LobbyRepository lobbyRepository;
+class ChatServiceTest {
 
     @Mock
-    private GameWebSocketHandler webSocketHandler;
+    private LobbyRepository lobbyRepository;
 
     @InjectMocks
     private ChatService chatService;
@@ -47,82 +45,61 @@ public class ChatServiceTest {
     }
 
     @Test
-    void processChatMessage_savesTeamMessage() {
+    void saveChatMessage_shouldSaveAndReturnMessageWithTimestampAndGlobalChannel() {
         when(lobbyRepository.findByLobbyCode(LOBBY_CODE)).thenReturn(Optional.of(lobby));
 
-        ChatMessageDTO msg = new ChatMessageDTO();
-        msg.setChannel("TEAM");
-        msg.setTeam(TeamColor.RED);
-        msg.setSenderName("Player1");
-        msg.setContent("Hello red team");
+        ChatMessageDTO input = new ChatMessageDTO();
+        input.setSenderName("Alice");
+        input.setContent("Hello world");
 
-        chatService.saveChatMessage(LOBBY_CODE, msg);
+        ChatMessageDTO saved = chatService.saveChatMessage(LOBBY_CODE, input);
 
-        // Verify saved
-        List<ChatMessageDTO> history = chatService.getHistory(LOBBY_CODE, TeamColor.RED, false);
-        assertEquals(1, history.size());
-        assertEquals("Hello red team", history.get(0).getContent());
+        assertNotNull(saved.getTimestamp());
+        assertEquals("GLOBAL", saved.getChannel());
+        assertEquals("Alice", saved.getSenderName());
+        assertEquals("Hello world", saved.getContent());
     }
 
     @Test
-    void getHistory_teamMessages_onlySameTeam() {
+    void getHistory_shouldReturnAllMessagesForLobby() {
         when(lobbyRepository.findByLobbyCode(LOBBY_CODE)).thenReturn(Optional.of(lobby));
 
-        // Save two team messages: one for RED, one for BLUE
-        ChatMessageDTO redMsg = new ChatMessageDTO();
-        redMsg.setChannel("TEAM");
-        redMsg.setTeam(TeamColor.RED);
-        redMsg.setContent("Red secret");
-        chatService.saveChatMessage(LOBBY_CODE, redMsg);
+        ChatMessageDTO msg1 = new ChatMessageDTO();
+        msg1.setSenderName("Alice");
+        msg1.setContent("First");
+        msg1.setTimestamp(LocalDateTime.now());
+        chatService.saveChatMessage(LOBBY_CODE, msg1);
 
-        ChatMessageDTO blueMsg = new ChatMessageDTO();
-        blueMsg.setChannel("TEAM");
-        blueMsg.setTeam(TeamColor.BLUE);
-        blueMsg.setContent("Blue secret");
-        chatService.saveChatMessage(LOBBY_CODE, blueMsg);
+        ChatMessageDTO msg2 = new ChatMessageDTO();
+        msg2.setSenderName("Bob");
+        msg2.setContent("Second");
+        msg2.setTimestamp(LocalDateTime.now());
+        chatService.saveChatMessage(LOBBY_CODE, msg2);
 
-        // RED player sees only RED message
-        List<ChatMessageDTO> redHistory = chatService.getHistory(LOBBY_CODE, TeamColor.RED, false);
-        assertEquals(1, redHistory.size());
-        assertEquals("Red secret", redHistory.get(0).getContent());
-
-        // BLUE player sees only BLUE message
-        List<ChatMessageDTO> blueHistory = chatService.getHistory(LOBBY_CODE, TeamColor.BLUE, false);
-        assertEquals(1, blueHistory.size());
-        assertEquals("Blue secret", blueHistory.get(0).getContent());
+        List<ChatMessageDTO> history = chatService.getHistory(LOBBY_CODE);
+        assertEquals(2, history.size());
+        assertEquals("First", history.get(0).getContent());
+        assertEquals("Second", history.get(1).getContent());
     }
 
     @Test
-    void getHistory_spymasterChannel_onlySpymastersSee() {
+    void getHistory_shouldReturnEmptyListWhenNoMessages() {
         when(lobbyRepository.findByLobbyCode(LOBBY_CODE)).thenReturn(Optional.of(lobby));
-
-        ChatMessageDTO spymasterMsg = new ChatMessageDTO();
-        spymasterMsg.setChannel("SPYMASTER");
-        spymasterMsg.setContent("Spymaster only");
-        chatService.saveChatMessage(LOBBY_CODE, spymasterMsg);
-
-        // Spymaster (isSpymaster=true) sees the message
-        List<ChatMessageDTO> spymasterHistory = chatService.getHistory(LOBBY_CODE, TeamColor.RED, true);
-        assertEquals(1, spymasterHistory.size());
-
-        // Regular spy (isSpymaster=false) sees nothing
-        List<ChatMessageDTO> spyHistory = chatService.getHistory(LOBBY_CODE, TeamColor.RED, false);
-        assertTrue(spyHistory.isEmpty());
+        List<ChatMessageDTO> history = chatService.getHistory(LOBBY_CODE);
+        assertTrue(history.isEmpty());
     }
 
     @Test
-    void processChatMessage_lobbyNotFound_throwsException() {
+    void saveChatMessage_lobbyNotFound_throwsException() {
         when(lobbyRepository.findByLobbyCode(LOBBY_CODE)).thenReturn(Optional.empty());
-
         ChatMessageDTO msg = new ChatMessageDTO();
         assertThrows(IllegalArgumentException.class, () -> chatService.saveChatMessage(LOBBY_CODE, msg));
     }
 
     @Test
-    void processChatMessage_gameNotStarted_throwsException() {
+    void saveChatMessage_gameNotStarted_throwsException() {
         lobby.setGame(null);
         when(lobbyRepository.findByLobbyCode(LOBBY_CODE)).thenReturn(Optional.of(lobby));
-
         ChatMessageDTO msg = new ChatMessageDTO();
         assertThrows(IllegalStateException.class, () -> chatService.saveChatMessage(LOBBY_CODE, msg));
     }
