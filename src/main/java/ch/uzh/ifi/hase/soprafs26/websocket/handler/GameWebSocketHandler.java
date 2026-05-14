@@ -1,5 +1,7 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 
+import java.util.HashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -15,14 +17,12 @@ import ch.uzh.ifi.hase.soprafs26.rest.dto.ChatMessageDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
-import ch.uzh.ifi.hase.soprafs26.service.ChatService;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.SubscribeDTO;
+import ch.uzh.ifi.hase.soprafs26.service.ChatService;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
 import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
-
-import java.util.HashMap;
 
 
 @Controller
@@ -65,6 +65,7 @@ public class GameWebSocketHandler {
         // Save and get the message
         ChatMessageDTO savedMsg = chatService.saveChatMessage(lobbyCode, chatMsg);
         broadcastChatMessage(lobbyCode, savedMsg);
+    }
       
     @MessageMapping("/{lobbyCode}/game-subscribe")
     public void handleGameSubscribe(@DestinationVariable String lobbyCode, @Payload SubscribeDTO payload, StompHeaderAccessor accessor) {
@@ -173,6 +174,7 @@ public class GameWebSocketHandler {
         log.info("Broadcasting CHAT_MESSAGE for lobby: {}", lobbyCode);
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", chatMsg);
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", chatMsg);
+    }
       
     public void broadcastPlayersUpdated(String lobbyCode) {
         log.info("Broadcasting PlayersUpdated for lobby: {}", lobbyCode);
