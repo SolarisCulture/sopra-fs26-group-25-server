@@ -67,6 +67,10 @@ public class GameEvent {
     public static GameEvent returningToLobby(String lobbyCode) {
         return new GameEvent("ReturningToLobby", lobbyCode);
     }
+
+    public static GameEvent returningToLobbyAfterDisconnect(String lobbyCode) {
+        return new GameEvent("ReturningToLobbyAfterDisconnect", lobbyCode);
+    }
     
     public static GameEvent clueGiven(String lobbyCode, GameBoardDTO board){
         return new GameEvent("CLUE_GIVEN", lobbyCode, board);

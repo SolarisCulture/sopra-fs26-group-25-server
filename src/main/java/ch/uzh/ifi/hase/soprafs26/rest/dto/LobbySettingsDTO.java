@@ -2,11 +2,9 @@ package ch.uzh.ifi.hase.soprafs26.rest.dto;
 
 import java.util.List;
 
-import ch.uzh.ifi.hase.soprafs26.constant.Difficulty;
 import ch.uzh.ifi.hase.soprafs26.constant.Topic;
 
 public class LobbySettingsDTO {
-    private Difficulty difficulty;
     private int timeLimit;
     private int rounds;
     private List<Topic> topics;
@@ -14,8 +12,6 @@ public class LobbySettingsDTO {
     private Integer spyTimeLimit;
 
     // Getters, Setters
-    public Difficulty getDifficulty() { return difficulty; }
-    public void setDifficulty(Difficulty difficulty) { this.difficulty = difficulty; }
 
     public int getTimeLimit() { return timeLimit; }
     public void setTimeLimit(int timeLimit) { this.timeLimit = timeLimit; }

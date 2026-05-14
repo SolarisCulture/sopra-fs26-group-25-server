@@ -53,8 +53,8 @@ public class GameService {
     private Game createNewGame(Lobby lobby) {
         // 3. Fetch 25 random words
         // for now short hardcoded list of words
-        Difficulty difficulty =  lobby.getSettings().getDifficulty();
-        List<String> words = wordService.getWordsForGame(difficulty);
+        //Difficulty difficulty =  lobby.getSettings().getDifficulty();
+        List<String> words = wordService.getWordsForGame(lobby.getSettings().getTopics());
 
         // 4.Generate card type distribution (the "key card")
         // Pick starting team randomly
@@ -108,6 +108,7 @@ public class GameService {
         game = gameRepository.save(game);
 
         lobby.setGame(game);
+        lobby.setLobbyStatus(LobbyStatus.IN_PROGRESS);
         game.setLobby(lobby);
 
         game = gameRepository.save(game);
@@ -194,8 +195,8 @@ public class GameService {
         game.setBlueTotal(startingTeam == TeamColor.BLUE ? 9 : 8);
 
         // New words and card types
-        Difficulty difficulty =  lobby.getSettings().getDifficulty();
-        List<String> words = wordService.getWordsForGame(difficulty);
+        //Difficulty difficulty =  lobby.getSettings().getDifficulty();
+        List<String> words = wordService.getWordsForGame(lobby.getSettings().getTopics());
         List<CardType> types = generateCardTypes(startingTeam);
 
         List<WordCard> cards = game.getBoard().getCards();
@@ -291,7 +292,6 @@ public class GameService {
 
         // Maybe remove later/add check for .PAUSED for restarting game during pause
         if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
-            System.out.println("IT GOT INTO THE IF STATEMENT IN BACKTOLOBBY!");
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished yet!");
         }
 
@@ -299,8 +299,6 @@ public class GameService {
         lobby.setLobbyStatus(LobbyStatus.WAITING);
 
         lobby.setGame(null);
-
-        System.out.println("LobbyStatus (after): " + lobby.getLobbyStatus());
 
         lobbyRepository.save(lobby);
 

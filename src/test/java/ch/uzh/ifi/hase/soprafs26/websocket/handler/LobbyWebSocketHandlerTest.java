@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
@@ -14,9 +13,6 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import org.mockito.MockitoAnnotations;
 import org.springframework.messaging.Message;
@@ -31,7 +27,8 @@ import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Player;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.PlayerDTO;
-import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.SubscribeDTO;
+import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
 import ch.uzh.ifi.hase.soprafs26.websocket.listener.LobbyWebSocketListener;
 
@@ -41,7 +38,7 @@ class LobbyWebSocketHandlerTest {
     private SimpMessagingTemplate messagingTemplate;
 
     @Mock
-    private LobbyService lobbyService;
+    private LobbyPresenceService lobbyPresenceService;
 
     @InjectMocks
     private LobbyWebSocketHandler lobbyWebSocketHandler;
@@ -292,6 +289,25 @@ class LobbyWebSocketHandlerTest {
     }
 
     @Test
+    void subscribeToLobby_shouldRegisterPresenceSession() {
+        String lobbyCode = "ABC123";
+        Long playerId = 1L;
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+        accessor.setSessionId("sessionId");
+
+        SubscribeDTO payload = new SubscribeDTO();
+        SubscribeDTO.Data data = new SubscribeDTO.Data();
+        data.setId(playerId);
+        payload.setData(data);
+
+        lobbyWebSocketHandler.subscribeToLobby(lobbyCode, payload, accessor);
+
+        assertEquals(lobbyCode, accessor.getSessionAttributes().get("lobbyCode"));
+        assertEquals(playerId, accessor.getSessionAttributes().get("playerId"));
+        verify(lobbyPresenceService).registerConnection("sessionId", lobbyCode, playerId);
+    }
+
+    @Test
     void broadcastMultipleEvents_shouldSendAll() {
         // Given
         String lobbyCode = "ABC123";
@@ -357,19 +373,12 @@ class LobbyWebSocketHandlerTest {
         assertNotNull(event.getTimestamp());
     }
 
-    // Connection Loss --> Player leaves
+    // Connection Loss --> Player leave is scheduled after a reconnect grace period
     @Test
-    void handleWebSocketDisconnectListener_shouldCallLeaveLobby() {
+    void handleWebSocketDisconnectListener_shouldNotifyPresenceService() {
         // Given
-        String lobbyCode = "ABC123";
-        Long playerId = 1L;
-
-        Map<String, Object> sessionAttributes = new HashMap<>();
-        sessionAttributes.put("lobbyCode", lobbyCode);
-        sessionAttributes.put("playerId", playerId);
-
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.DISCONNECT);
-        accessor.setSessionAttributes(sessionAttributes);
+        accessor.setSessionId("sessionId");
 
         // Simulates the message sent when dc happens
         Message<byte[]> message = MessageBuilder.createMessage(
@@ -383,8 +392,8 @@ class LobbyWebSocketHandlerTest {
         lobbyWebSocketListener.handleWebSocketDisconnectListener(event);
 
         // Then
-        verify(lobbyService, times(1))
-            .leaveLobby(lobbyCode, playerId);
+        verify(lobbyPresenceService, times(1))
+            .handleDisconnect("sessionId");
     }
 
     // No playerId + lobbyCode in message --> nothing happens
@@ -404,8 +413,7 @@ class LobbyWebSocketHandlerTest {
         lobbyWebSocketListener.handleWebSocketDisconnectListener(event);
 
         // Then
-        verify(lobbyService, never())
-            .leaveLobby(anyString(), anyLong());
+        verify(lobbyPresenceService, never())
+            .handleDisconnect(anyString());
     }
 }
-

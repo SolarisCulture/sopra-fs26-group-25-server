@@ -1,5 +1,11 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import ch.uzh.ifi.hase.soprafs26.constant.EventType;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.SubscribeDTO;
+import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
+import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +19,8 @@ import static org.mockito.Mockito.verify;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 
 import ch.uzh.ifi.hase.soprafs26.constant.EventType;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
@@ -35,6 +43,9 @@ class GameWebSocketHandlerTest {
     @Mock
     private TurnService turnService;
 
+    @Mock
+    private LobbyPresenceService lobbyPresenceService;
+
     @InjectMocks
     private GameWebSocketHandler gameWebSocketHandler;
 
@@ -44,7 +55,7 @@ class GameWebSocketHandlerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this); // Initializes Mocks
-        gameWebSocketHandler = new GameWebSocketHandler(messagingTemplate, turnService, chatService);
+        gameWebSocketHandler = new GameWebSocketHandler(messagingTemplate, turnService, chatService, lobbyPresenceService);
     }
 
     // ==================== handleClue tests ====================
@@ -71,6 +82,15 @@ class GameWebSocketHandlerTest {
         verify(turnService).submitGuess("ABC123", guessDTO);
     }
 
+    @Test
+    public void handleReportedGuess_callsSubmitReportedGuess() {
+        GuessDTO guessDTO = new GuessDTO("APPLE");
+
+        gameWebSocketHandler.handleReportedGuess("ABC123", guessDTO);
+
+        verify(turnService).submitReportedGuess("ABC123", guessDTO);
+    }
+
     // ==================== handleEndTurn tests ====================
 
     @Test
@@ -78,6 +98,22 @@ class GameWebSocketHandlerTest {
         gameWebSocketHandler.handleEndTurn("ABC123");
 
         verify(turnService).endTurn("ABC123");
+    }
+
+    @Test
+    public void handleGameSubscribe_registersGamePresence() {
+        SubscribeDTO payload = new SubscribeDTO();
+        SubscribeDTO.Data data = new SubscribeDTO.Data();
+        data.setId(1L);
+        payload.setData(data);
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+        accessor.setSessionId("sessionId");
+
+        gameWebSocketHandler.handleGameSubscribe("ABC123", payload, accessor);
+
+        assertEquals("ABC123", accessor.getSessionAttributes().get("lobbyCode"));
+        assertEquals(1L, accessor.getSessionAttributes().get("playerId"));
+        verify(lobbyPresenceService).registerGameConnection("sessionId", "ABC123", 1L);
     }
 
     // ==================== broadcast tests ====================
