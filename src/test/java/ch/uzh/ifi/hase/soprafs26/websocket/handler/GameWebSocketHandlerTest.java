@@ -1,4 +1,5 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import ch.uzh.ifi.hase.soprafs26.constant.EventType;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
@@ -9,22 +10,26 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 
+import ch.uzh.ifi.hase.soprafs26.constant.EventType;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.service.ChatService;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
+import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class GameWebSocketHandlerTest {
@@ -44,10 +49,13 @@ class GameWebSocketHandlerTest {
     @InjectMocks
     private GameWebSocketHandler gameWebSocketHandler;
 
+    @Mock
+    private ChatService chatService;
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this); // Initializes Mocks
-        gameWebSocketHandler = new GameWebSocketHandler(messagingTemplate, turnService, lobbyPresenceService);
+        gameWebSocketHandler = new GameWebSocketHandler(messagingTemplate, turnService, chatService, lobbyPresenceService);
     }
 
     // ==================== handleClue tests ====================

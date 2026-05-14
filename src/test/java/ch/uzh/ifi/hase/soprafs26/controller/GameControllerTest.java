@@ -1,10 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.controller;
 
-import ch.uzh.ifi.hase.soprafs26.constant.*;
-import ch.uzh.ifi.hase.soprafs26.entity.Game;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.*;
-import ch.uzh.ifi.hase.soprafs26.service.GameService;
-import ch.uzh.ifi.hase.soprafs26.service.TurnService;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -17,6 +13,7 @@ import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
@@ -25,30 +22,23 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-
-import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willDoNothing;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import ch.uzh.ifi.hase.soprafs26.constant.CardType;
 import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
 import ch.uzh.ifi.hase.soprafs26.constant.Role;
 import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
 import ch.uzh.ifi.hase.soprafs26.entity.Game;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.CardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ChatMessageDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameStatisticsDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.service.ChatService;
 import ch.uzh.ifi.hase.soprafs26.service.GameService;
 import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import tools.jackson.core.JacksonException;
@@ -65,6 +55,12 @@ public class GameControllerTest {
 
     @MockitoBean
     private TurnService turnService;
+
+    @MockitoBean
+    private ChatService chatService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     public void startGame_validLobby_returns201() throws Exception {
@@ -381,5 +377,33 @@ public class GameControllerTest {
 
         mockMvc.perform(post("/api/games/ABC123/end-turn"))
                 .andExpect(status().isBadRequest());
+    }
+    // ==================== chat-history test ====================
+    @Test
+    void getChatHistory_shouldReturnListOfMessages() throws Exception {
+        String lobbyCode = "ABC123";
+        ChatMessageDTO msg = new ChatMessageDTO();
+        msg.setSenderName("Alice");
+        msg.setContent("Hello");
+        msg.setTimestamp(LocalDateTime.now());
+        msg.setChannel("GLOBAL");
+
+        when(chatService.getHistory(lobbyCode)).thenReturn(List.of(msg));
+
+        mockMvc.perform(get("/api/games/{lobbyCode}/chat-history", lobbyCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].senderName").value("Alice"))
+                .andExpect(jsonPath("$[0].content").value("Hello"))
+                .andExpect(jsonPath("$[0].channel").value("GLOBAL"));
+    }
+
+    @Test
+    void getChatHistory_noMessages_returnsEmptyArray() throws Exception {
+        String lobbyCode = "ABC123";
+        when(chatService.getHistory(lobbyCode)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/games/{lobbyCode}/chat-history", lobbyCode))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
     }
 }

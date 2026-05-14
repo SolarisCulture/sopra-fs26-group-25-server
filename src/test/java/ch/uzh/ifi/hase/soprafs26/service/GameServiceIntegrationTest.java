@@ -1,11 +1,10 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
-import ch.uzh.ifi.hase.soprafs26.constant.*;
-import ch.uzh.ifi.hase.soprafs26.entity.*;
-import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
-import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,18 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import ch.uzh.ifi.hase.soprafs26.constant.CardType;
+import ch.uzh.ifi.hase.soprafs26.constant.GameStatus;
+import ch.uzh.ifi.hase.soprafs26.constant.Role;
+import ch.uzh.ifi.hase.soprafs26.constant.TeamColor;
+import ch.uzh.ifi.hase.soprafs26.constant.TurnPhase;
+import ch.uzh.ifi.hase.soprafs26.entity.Game;
+import ch.uzh.ifi.hase.soprafs26.entity.Lobby;
+import ch.uzh.ifi.hase.soprafs26.entity.WordCard;
+import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
 
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
