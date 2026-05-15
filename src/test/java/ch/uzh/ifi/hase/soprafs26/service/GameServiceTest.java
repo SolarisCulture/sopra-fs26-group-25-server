@@ -66,6 +66,9 @@ class GameServiceTest {
     @Mock
     private TurnRepository turnRepository;
 
+    @Mock
+    private TimerService timerService;
+
     @Spy
     @InjectMocks
     private GameService gameService;
@@ -108,6 +111,7 @@ class GameServiceTest {
         assertEquals(GameStatus.ACTIVE, game.getStatus());
         assertEquals(LobbyStatus.IN_PROGRESS, testLobby.getLobbyStatus());
         assertEquals(TurnPhase.SPYMASTER_TURN, game.getCurrentTurn().getPhase());
+        verify(timerService, times(0)).startTimer(eq("ABC123"), Mockito.anyLong());
 
         // Verify board has correct card type distribution
         // `.stream().filter().count()` goes through all 25 cards and counts how many are each type
@@ -131,6 +135,21 @@ class GameServiceTest {
         verify(lobbyRepository, atLeastOnce()).save(any(Lobby.class));
         verify(gameRepository, atLeast(2)).save(any(Game.class));
         verify(turnRepository, times(1)).save(any(Turn.class));
+    }
+
+    @Test
+    public void startGame_withSpymasterTimer_startsInitialTimer() {
+        testLobby.getSettings().setSpymasterTimeLimit(120);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+        when(wordService.getWordsForGame(testLobby.getSettings().getTopics())).thenCallRealMethod();
+        when(lobbyRepository.save(any(Lobby.class))).thenReturn(testLobby);
+        when(gameRepository.save(any(Game.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(turnRepository.save(any(Turn.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Game game = gameService.startGame("ABC123");
+
+        assertEquals(TurnPhase.SPYMASTER_TURN, game.getCurrentTurn().getPhase());
+        verify(timerService).startTimer("ABC123", 120L);
     }
 
     @Test

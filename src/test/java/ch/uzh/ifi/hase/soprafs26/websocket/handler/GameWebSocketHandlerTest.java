@@ -3,8 +3,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import ch.uzh.ifi.hase.soprafs26.constant.EventType;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.PauseDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.SubscribeDTO;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
+import ch.uzh.ifi.hase.soprafs26.service.TimerService;
 import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +48,9 @@ class GameWebSocketHandlerTest {
     @Mock
     private LobbyPresenceService lobbyPresenceService;
 
+    @Mock
+    private TimerService timerService;
+
     @InjectMocks
     private GameWebSocketHandler gameWebSocketHandler;
 
@@ -55,7 +60,7 @@ class GameWebSocketHandlerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this); // Initializes Mocks
-        gameWebSocketHandler = new GameWebSocketHandler(messagingTemplate, turnService, chatService, lobbyPresenceService);
+        gameWebSocketHandler = new GameWebSocketHandler(messagingTemplate, turnService, chatService, lobbyPresenceService, timerService);
     }
 
     // ==================== handleClue tests ====================
@@ -91,6 +96,20 @@ class GameWebSocketHandlerTest {
         verify(turnService).submitReportedGuess("ABC123", guessDTO);
     }
 
+    @Test
+    public void handleClueReport_marksClueReported() {
+        gameWebSocketHandler.handleClueReport("ABC123");
+
+        verify(turnService).reportClue("ABC123");
+    }
+
+    @Test
+    public void handleClueApproved_marksReportedClueApproved() {
+        gameWebSocketHandler.handleClueApproved("ABC123");
+
+        verify(turnService).approveReportedClue("ABC123");
+    }
+
     // ==================== handleEndTurn tests ====================
 
     @Test
@@ -98,6 +117,16 @@ class GameWebSocketHandlerTest {
         gameWebSocketHandler.handleEndTurn("ABC123");
 
         verify(turnService).endTurn("ABC123");
+    }
+
+    @Test
+    public void handlePause_callsPauseTimer() {
+        PauseDTO pauseDTO = new PauseDTO();
+        pauseDTO.setPaused(true);
+
+        gameWebSocketHandler.handlePause("ABC123", pauseDTO);
+
+        verify(timerService).pauseTimer("ABC123", true);
     }
 
     @Test

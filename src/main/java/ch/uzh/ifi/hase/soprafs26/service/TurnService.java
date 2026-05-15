@@ -76,13 +76,7 @@ public class TurnService {
 
         turnRepository.saveAndFlush(turn);
 
-        Integer timeLimit = null;
-        if (game.getLobby() != null && game.getLobby().getSettings() != null) {
-            timeLimit = game.getLobby().getSettings().getSpyTimeLimit();
-        }
-        if (timeLimit != null && timeLimit > 0) {
-            timerService.startTimer(lobbyCode, timeLimit);
-        }
+        restartTimerForNextPhase(lobbyCode, getSpyTimeLimit(game));
 
         //  Broadcast updated game state
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
@@ -252,19 +246,15 @@ public class TurnService {
 
         turn.setClue(null);
         turn.setGuessesRemaining(0);
+        turn.setClueUnderReview(false);
+        turn.setInvalidCluePenaltyPending(false);
         turn.setPhase(TurnPhase.SPYMASTER_TURN);
         turn.setCurrentTeamColor(penaltyTeam);
         turn.setStartTime(LocalDateTime.now());
 
         turnRepository.saveAndFlush(turn);
 
-        Integer timeLimit = null;
-        if (game.getLobby() != null && game.getLobby().getSettings() != null) {
-            timeLimit = game.getLobby().getSettings().getSpymasterTimeLimit();
-        }
-        if (timeLimit != null && timeLimit > 0) {
-            timerService.startTimer(lobbyCode, timeLimit);
-        }
+        restartTimerForNextPhase(lobbyCode, getSpymasterTimeLimit(game));
 
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
         GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
@@ -279,7 +269,36 @@ public class TurnService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No clue to rule invalid");
         }
 
+        turn.setClueUnderReview(false);
+        turn.setInvalidCluePenaltyPending(true);
+        turnRepository.saveAndFlush(turn);
         timerService.stopTimer(lobbyCode);
+    }
+
+    public void reportClue(String lobbyCode) {
+        Game game = getActiveGame(lobbyCode);
+        Turn turn = getCurrentTurn(game, TurnPhase.SPY_TURN);
+
+        if (turn.getClue() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No clue to report");
+        }
+
+        turn.setClueUnderReview(true);
+        turn.setInvalidCluePenaltyPending(false);
+        turnRepository.saveAndFlush(turn);
+    }
+
+    public void approveReportedClue(String lobbyCode) {
+        Game game = getActiveGame(lobbyCode);
+        Turn turn = getCurrentTurn(game, TurnPhase.SPY_TURN);
+
+        if (turn.getClue() == null || !turn.isClueUnderReview()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No reported clue to approve");
+        }
+
+        turn.setClueUnderReview(false);
+        turn.setInvalidCluePenaltyPending(false);
+        turnRepository.saveAndFlush(turn);
     }
 
     public void endTurn(String lobbyCode) {
@@ -294,8 +313,6 @@ public class TurnService {
         if (voluntary && currentTurn.getPhase() != TurnPhase.SPY_TURN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Can only end turn during guessing phase");
         }
-
-        timerService.stopTimer(lobbyCode);
 
         // Figure out the other team
         TeamColor nextTeam = getOtherTeam(currentTurn.getCurrentTeamColor());
@@ -314,13 +331,7 @@ public class TurnService {
         game.getTurns().add(nextTurn);
         game.setCurrentTurn(nextTurn);
 
-        Integer timeLimit = null;
-        if (game.getLobby() != null && game.getLobby().getSettings() != null) {
-            timeLimit = game.getLobby().getSettings().getSpymasterTimeLimit();
-        }
-        if (timeLimit != null && timeLimit > 0) {
-            timerService.startTimer(lobbyCode, timeLimit);
-        }
+        restartTimerForNextPhase(lobbyCode, getSpymasterTimeLimit(game));
 
         // Save and broadcast
         GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
@@ -362,6 +373,27 @@ public class TurnService {
 
     private TeamColor getOtherTeam(TeamColor team) {
         return team == TeamColor.RED ? TeamColor.BLUE : TeamColor.RED;
+    }
+
+    private Integer getSpyTimeLimit(Game game) {
+        if (game.getLobby() == null || game.getLobby().getSettings() == null) {
+            return null;
+        }
+        return game.getLobby().getSettings().getSpyTimeLimit();
+    }
+
+    private Integer getSpymasterTimeLimit(Game game) {
+        if (game.getLobby() == null || game.getLobby().getSettings() == null) {
+            return null;
+        }
+        return game.getLobby().getSettings().getSpymasterTimeLimit();
+    }
+
+    private void restartTimerForNextPhase(String lobbyCode, Integer timeLimit) {
+        timerService.stopTimer(lobbyCode);
+        if (timeLimit != null && timeLimit > 0) {
+            timerService.startTimer(lobbyCode, timeLimit);
+        }
     }
 
     private CardType getAgentCardType(TeamColor team) {

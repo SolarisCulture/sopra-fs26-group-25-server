@@ -18,7 +18,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.longThat;
@@ -75,6 +77,42 @@ class TimerServiceTest {
         // Verify nothing happened
         verify(turnService, never()).endTurn(any());
         verify(gameWebSocketHandler, never()).broadcastTimer(any(), anyLong());
+    }
+
+    @Test
+    public void pauseTimer_pausesActiveTimerAndGame() throws InterruptedException {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        when(gameRepository.findByLobbyLobbyCode("ABC123")).thenReturn(Optional.of(game));
+        timerService.startTimer("ABC123", 1);
+
+        timerService.pauseTimer("ABC123", true);
+        Thread.sleep(1200);
+        timerService.checkTimers();
+
+        assertEquals(GameStatus.PAUSE, game.getStatus());
+        verify(gameRepository).save(game);
+        verify(gameWebSocketHandler).broadcastGamePaused("ABC123");
+        verify(turnService, never()).endTurn("ABC123");
+    }
+
+    @Test
+    public void pauseTimer_resumeUnfreezesRemainingTime() throws InterruptedException {
+        Game game = new Game();
+        game.setStatus(GameStatus.ACTIVE);
+        when(gameRepository.findByLobbyLobbyCode("ABC123")).thenReturn(Optional.of(game));
+        timerService.startTimer("ABC123", 3);
+
+        timerService.pauseTimer("ABC123", true);
+        long remainingAfterPause = timerService.getRemainingSeconds("ABC123");
+        Thread.sleep(1200);
+        assertEquals(remainingAfterPause, timerService.getRemainingSeconds("ABC123"));
+
+        timerService.pauseTimer("ABC123", false);
+
+        assertEquals(GameStatus.ACTIVE, game.getStatus());
+        verify(gameRepository, times(2)).save(game);
+        verify(gameWebSocketHandler).broadcastGameResumed("ABC123");
     }
 
 }
