@@ -8,8 +8,11 @@ import ch.uzh.ifi.hase.soprafs26.entity.Turn;
 import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.Duration; 
@@ -26,7 +29,7 @@ public class TimerService {
     // Store timers in memory instead of querying database every second
     private final Map<String, GameTimer> activeTimers = new ConcurrentHashMap<>();
 
-    public TimerService(GameRepository gameRepository, TurnService turnService, GameWebSocketHandler gameWebSocketHandler) {
+    public TimerService(GameRepository gameRepository, TurnService turnService, @Lazy GameWebSocketHandler gameWebSocketHandler) {
         this.gameRepository = gameRepository;
         this.turnService = turnService;
         this.gameWebSocketHandler = gameWebSocketHandler;
@@ -51,6 +54,37 @@ public class TimerService {
         return timer.getRemainingSeconds(LocalDateTime.now());
     }
 
+    public void pauseTimer(String lobbyCode, boolean paused) {
+        Game game = gameRepository.findByLobbyLobbyCode(lobbyCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Game not found"));
+
+        if (game.getStatus() == GameStatus.FINISHED || game.getStatus() == GameStatus.ARCHIVED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot pause a finished game");
+        }
+
+        GameTimer timer = activeTimers.get(lobbyCode);
+        LocalDateTime now = LocalDateTime.now();
+
+        if (paused) {
+            if (timer != null) {
+                timer.pause(now);
+                gameWebSocketHandler.broadcastTimer(lobbyCode, timer.getRemainingSeconds(now));
+            }
+            game.setStatus(GameStatus.PAUSE);
+            gameRepository.save(game);
+            gameWebSocketHandler.broadcastGamePaused(lobbyCode);
+            return;
+        }
+
+        if (timer != null) {
+            timer.resume(now);
+            gameWebSocketHandler.broadcastTimer(lobbyCode, timer.getRemainingSeconds(now));
+        }
+        game.setStatus(GameStatus.ACTIVE);
+        gameRepository.save(game);
+        gameWebSocketHandler.broadcastGameResumed(lobbyCode);
+    }
+
     @Scheduled(fixedRate = 1000)
     public void checkTimers() {
         if (activeTimers.isEmpty()) return; // Nothing to do
@@ -61,6 +95,9 @@ public class TimerService {
         for (Map.Entry<String, GameTimer> entry : activeTimers.entrySet()) {
             String lobbyCode = entry.getKey();
             GameTimer timer = entry.getValue();
+            if (timer.isPaused()) {
+                continue;
+            }
             
             long remainingSeconds = timer.getRemainingSeconds(now);
             

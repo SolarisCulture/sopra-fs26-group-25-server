@@ -17,9 +17,11 @@ import ch.uzh.ifi.hase.soprafs26.rest.dto.ChatMessageDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.PauseDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.SubscribeDTO;
 import ch.uzh.ifi.hase.soprafs26.service.ChatService;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
+import ch.uzh.ifi.hase.soprafs26.service.TimerService;
 import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.LobbyEvent;
@@ -31,14 +33,16 @@ public class GameWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(GameWebSocketHandler.class); // For debugging
     private final SimpMessagingTemplate messagingTemplate; // The tool that sends messages over WebSocket
     private final TurnService turnService;
+    private final TimerService timerService;
     private final ChatService chatService;
     private final LobbyPresenceService lobbyPresenceService;
 
-    public GameWebSocketHandler(SimpMessagingTemplate messagingTemplate, @Lazy TurnService turnService, ChatService chatService, LobbyPresenceService lobbyPresenceService) {
+    public GameWebSocketHandler(SimpMessagingTemplate messagingTemplate, @Lazy TurnService turnService, ChatService chatService, LobbyPresenceService lobbyPresenceService, @Lazy TimerService timerService) {
         this.messagingTemplate = messagingTemplate;
         this.turnService = turnService;
         this.chatService = chatService;
         this.lobbyPresenceService = lobbyPresenceService;
+        this.timerService = timerService;
     }
     // ==================== Incoming messages ====================
 
@@ -90,6 +94,7 @@ public class GameWebSocketHandler {
     @MessageMapping("/{lobbyCode}/clue-report")
     public void handleClueReport(@DestinationVariable String lobbyCode) {
         log.info("Broadcasting ClueReported for lobby: {}", lobbyCode);
+        turnService.reportClue(lobbyCode);
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent("ClueReported", lobbyCode));
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent("ClueReported", lobbyCode));
     }
@@ -97,6 +102,7 @@ public class GameWebSocketHandler {
     @MessageMapping("/{lobbyCode}/clue-approved")
     public void handleClueApproved(@DestinationVariable String lobbyCode) {
         log.info("Broadcasting ClueApproved for lobby: {}", lobbyCode);
+        turnService.approveReportedClue(lobbyCode);
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent("ClueApproved", lobbyCode));
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent("ClueApproved", lobbyCode));
     }
@@ -112,6 +118,11 @@ public class GameWebSocketHandler {
     @MessageMapping("/{lobbyCode}/reported-guess")
     public void handleReportedGuess(@DestinationVariable String lobbyCode, GuessDTO guessDTO) {
         turnService.submitReportedGuess(lobbyCode, guessDTO);
+    }
+
+    @MessageMapping("/{lobbyCode}/pause")
+    public void handlePause(@DestinationVariable String lobbyCode, PauseDTO pauseDTO) {
+        timerService.pauseTimer(lobbyCode, pauseDTO.isPaused());
     }
 
     // ==================== Broadcasting ====================
@@ -168,6 +179,18 @@ public class GameWebSocketHandler {
         log.info("Broadcasting TIMER_UPDATE for lobby: {}", lobbyCode);
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", GameEvent.timerUpdate(lobbyCode, timer));
         messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", GameEvent.timerUpdate(lobbyCode, timer));
+    }
+
+    public void broadcastGamePaused(String lobbyCode) {
+        log.info("Broadcasting GamePaused for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent("GamePaused", lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent("GamePaused", lobbyCode));
+    }
+
+    public void broadcastGameResumed(String lobbyCode) {
+        log.info("Broadcasting GameResumed for lobby: {}", lobbyCode);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spymaster", new GameEvent("GameResumed", lobbyCode));
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyCode + "/spy", new GameEvent("GameResumed", lobbyCode));
     }
 
     public void broadcastChatMessage(String lobbyCode, ChatMessageDTO chatMsg) {

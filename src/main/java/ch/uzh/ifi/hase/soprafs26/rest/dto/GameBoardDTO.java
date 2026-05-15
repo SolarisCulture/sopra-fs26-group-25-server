@@ -27,6 +27,8 @@ public class GameBoardDTO {
     private long remainingTimeSeconds;
     private String clueWord;
     private int clueCount;
+    private boolean clueUnderReview;
+    private boolean invalidCluePenaltyPending;
 
 
 
@@ -79,6 +81,12 @@ public class GameBoardDTO {
 
     public int getClueCount() { return clueCount; }
     public void setClueCount(int clueCount) {  this.clueCount = clueCount; }
+
+    public boolean isClueUnderReview() { return clueUnderReview; }
+    public void setClueUnderReview(boolean clueUnderReview) { this.clueUnderReview = clueUnderReview; }
+
+    public boolean isInvalidCluePenaltyPending() { return invalidCluePenaltyPending; }
+    public void setInvalidCluePenaltyPending(boolean invalidCluePenaltyPending) { this.invalidCluePenaltyPending = invalidCluePenaltyPending; }
 
     public List<ClueHistoryEntryDTO> getClueHistory() { return clueHistory; }
     public void setClueHistory(List<ClueHistoryEntryDTO> clueHistory) { this.clueHistory = clueHistory; }
