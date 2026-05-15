@@ -10,6 +10,7 @@ public class LobbySettingsDTO {
     private List<Topic> topics;
     private Integer spymasterTimeLimit;
     private Integer spyTimeLimit;
+    private String customWordList;
 
     // Getters, Setters
 
@@ -27,4 +28,7 @@ public class LobbySettingsDTO {
 
     public Integer getSpyTimeLimit() { return spyTimeLimit; }
     public void setSpyTimeLimit(Integer spyTimeLimit) { this.spyTimeLimit = spyTimeLimit; }
+
+    public String getCustomWordList() { return customWordList; }
+    public void setCustomWordList(String customWordList) { this.customWordList = customWordList; }
 }

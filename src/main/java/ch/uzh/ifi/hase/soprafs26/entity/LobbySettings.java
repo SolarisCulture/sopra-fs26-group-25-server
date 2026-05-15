@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ch.uzh.ifi.hase.soprafs26.constant.Topic;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,6 +21,7 @@ public class LobbySettings {
     @Enumerated(EnumType.STRING)
     private List<Topic> topics = new ArrayList<>();
 
+    @Column(length = 50000)
     private String customWordList; // probably as JSON 
 
 
