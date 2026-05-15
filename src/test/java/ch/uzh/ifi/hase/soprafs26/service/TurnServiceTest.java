@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -113,6 +114,26 @@ public class TurnServiceTest {
         verify(turnRepository).saveAndFlush(any(Turn.class));
         verify(gameWebSocketHandler).broadcastGameState(
                 eq("ABC123"), any(), any(GameBoardDTO.class), any(GameBoardDTO.class));
+    }
+
+    @Test
+    public void submitClue_withoutSpyTimer_stopsSpymasterTimer() {
+        testLobby.getSettings().setSpymasterTimeLimit(120);
+        testLobby.getSettings().setSpyTimeLimit(0);
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+        when(turnRepository.saveAndFlush(any(Turn.class))).thenReturn(testTurn);
+        when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
+        when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
+
+        ClueDTO clueDTO = new ClueDTO();
+        clueDTO.setWord("animal");
+        clueDTO.setCount(3);
+
+        turnService.submitClue("ABC123", clueDTO);
+
+        assertEquals(TurnPhase.SPY_TURN, testTurn.getPhase());
+        verify(timerService).stopTimer("ABC123");
+        verify(timerService, never()).startTimer(eq("ABC123"), anyLong());
     }
 
     @Test

@@ -1,26 +1,37 @@
 package ch.uzh.ifi.hase.soprafs26.websocket.handler;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import ch.uzh.ifi.hase.soprafs26.constant.EventType;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.PauseDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.SubscribeDTO;
+import ch.uzh.ifi.hase.soprafs26.service.LobbyPresenceService;
+import ch.uzh.ifi.hase.soprafs26.service.TimerService;
 import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 
+import ch.uzh.ifi.hase.soprafs26.constant.EventType;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
+import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
+import ch.uzh.ifi.hase.soprafs26.service.ChatService;
 import ch.uzh.ifi.hase.soprafs26.service.LobbyService;
+import ch.uzh.ifi.hase.soprafs26.service.TurnService;
 import ch.uzh.ifi.hase.soprafs26.websocket.event.GameEvent;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class GameWebSocketHandlerTest {
@@ -34,13 +45,22 @@ class GameWebSocketHandlerTest {
     @Mock
     private TurnService turnService;
 
+    @Mock
+    private LobbyPresenceService lobbyPresenceService;
+
+    @Mock
+    private TimerService timerService;
+
     @InjectMocks
     private GameWebSocketHandler gameWebSocketHandler;
+
+    @Mock
+    private ChatService chatService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this); // Initializes Mocks
-        gameWebSocketHandler = new GameWebSocketHandler(messagingTemplate, turnService);
+        gameWebSocketHandler = new GameWebSocketHandler(messagingTemplate, turnService, chatService, lobbyPresenceService, timerService);
     }
 
     // ==================== handleClue tests ====================
@@ -76,6 +96,20 @@ class GameWebSocketHandlerTest {
         verify(turnService).submitReportedGuess("ABC123", guessDTO);
     }
 
+    @Test
+    public void handleClueReport_marksClueReported() {
+        gameWebSocketHandler.handleClueReport("ABC123");
+
+        verify(turnService).reportClue("ABC123");
+    }
+
+    @Test
+    public void handleClueApproved_marksReportedClueApproved() {
+        gameWebSocketHandler.handleClueApproved("ABC123");
+
+        verify(turnService).approveReportedClue("ABC123");
+    }
+
     // ==================== handleEndTurn tests ====================
 
     @Test
@@ -83,6 +117,32 @@ class GameWebSocketHandlerTest {
         gameWebSocketHandler.handleEndTurn("ABC123");
 
         verify(turnService).endTurn("ABC123");
+    }
+
+    @Test
+    public void handlePause_callsPauseTimer() {
+        PauseDTO pauseDTO = new PauseDTO();
+        pauseDTO.setPaused(true);
+
+        gameWebSocketHandler.handlePause("ABC123", pauseDTO);
+
+        verify(timerService).pauseTimer("ABC123", true);
+    }
+
+    @Test
+    public void handleGameSubscribe_registersGamePresence() {
+        SubscribeDTO payload = new SubscribeDTO();
+        SubscribeDTO.Data data = new SubscribeDTO.Data();
+        data.setId(1L);
+        payload.setData(data);
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+        accessor.setSessionId("sessionId");
+
+        gameWebSocketHandler.handleGameSubscribe("ABC123", payload, accessor);
+
+        assertEquals("ABC123", accessor.getSessionAttributes().get("lobbyCode"));
+        assertEquals(1L, accessor.getSessionAttributes().get("playerId"));
+        verify(lobbyPresenceService).registerGameConnection("sessionId", "ABC123", 1L);
     }
 
     // ==================== broadcast tests ====================

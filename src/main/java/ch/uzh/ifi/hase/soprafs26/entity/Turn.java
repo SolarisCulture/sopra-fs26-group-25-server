@@ -24,6 +24,8 @@ public class Turn {
     private TurnPhase phase;
     private int guessesRemaining;
     private LocalDateTime startTime;
+    private boolean clueUnderReview;
+    private boolean invalidCluePenaltyPending;
 
     @OneToOne(cascade = CascadeType.ALL)
     private Clue clue;
@@ -49,6 +51,12 @@ public class Turn {
 
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+
+    public boolean isClueUnderReview() { return clueUnderReview; }
+    public void setClueUnderReview(boolean clueUnderReview) { this.clueUnderReview = clueUnderReview; }
+
+    public boolean isInvalidCluePenaltyPending() { return invalidCluePenaltyPending; }
+    public void setInvalidCluePenaltyPending(boolean invalidCluePenaltyPending) { this.invalidCluePenaltyPending = invalidCluePenaltyPending; }
 
     public Clue getClue() { return clue; }
     public void setClue(Clue clue) { this.clue = clue; }

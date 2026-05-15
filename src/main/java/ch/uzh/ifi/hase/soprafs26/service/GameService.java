@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 import ch.uzh.ifi.hase.soprafs26.constant.*;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,14 +40,16 @@ public class GameService {
     private final WordService wordService;
     private final GameWebSocketHandler gameWebSocketHandler;
     private final TurnRepository turnRepository;
+    private final TimerService timerService;
 
 
-    public GameService(LobbyRepository lobbyRepository, GameRepository gameRepository, WordService wordService, GameWebSocketHandler gameWebSocketHandler, TurnRepository turnRepository) {
+    public GameService(LobbyRepository lobbyRepository, GameRepository gameRepository, WordService wordService, GameWebSocketHandler gameWebSocketHandler, TurnRepository turnRepository, @Lazy TimerService timerService) {
         this.lobbyRepository = lobbyRepository;
         this.turnRepository = turnRepository;
         this.gameRepository = gameRepository;
         this.wordService = wordService;
         this.gameWebSocketHandler = gameWebSocketHandler;
+        this.timerService = timerService;
     }
 
 
@@ -115,6 +118,7 @@ public class GameService {
         game = gameRepository.save(game);
 
         lobby.setGame(game);
+        lobby.setLobbyStatus(LobbyStatus.IN_PROGRESS);
         game.setLobby(lobby);
 
         game = gameRepository.save(game);
@@ -140,6 +144,10 @@ public class GameService {
 
         Game game = createNewGame(lobby);
 
+        Long timeLimit = getTimeLimitForPhase(game);
+        if (timeLimit != null && timeLimit > 0) {
+            timerService.startTimer(lobbyCode, timeLimit);
+        }
 
         // 8. Build both views and pass them to the handler
         GameBoardDTO spymasterBoard = buildBoardDTO(game, Role.SPYMASTER);
@@ -304,18 +312,10 @@ public class GameService {
         }
         Lobby lobby = lobbyOptional.get();
 
-        // Maybe remove later/add check for .PAUSED for restarting game during pause
-        if (lobby.getGame().getStatus() != GameStatus.FINISHED) {
-            System.out.println("IT GOT INTO THE IF STATEMENT IN BACKTOLOBBY!");
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game is not finished yet!");
-        }
-
         lobby.getGame().setStatus(GameStatus.ARCHIVED);
         lobby.setLobbyStatus(LobbyStatus.WAITING);
 
         lobby.setGame(null);
-
-        System.out.println("LobbyStatus (after): " + lobby.getLobbyStatus());
 
         lobbyRepository.save(lobby);
 
@@ -384,12 +384,22 @@ public class GameService {
         if (currentTurn != null) {
             boardDTO.setCurrentPhase(currentTurn.getPhase());
             boardDTO.setGuessesRemaining(currentTurn.getGuessesRemaining());
+            boardDTO.setClueUnderReview(currentTurn.isClueUnderReview());
+            boardDTO.setInvalidCluePenaltyPending(currentTurn.isInvalidCluePenaltyPending());
+            if (currentTurn.getClue() != null) {
+                boardDTO.setClueWord(currentTurn.getClue().getWord());
+                boardDTO.setClueCount(currentTurn.getClue().getCount());
+            }
 
             // Calculate remaining time
             if (currentTurn.getStartTime() != null) {
                 long elapsed = Duration.between(currentTurn.getStartTime(), LocalDateTime.now()).getSeconds();
-                long timeLimit = game.getLobby().getSettings().getTimeLimit();
-                boardDTO.setRemainingTimeSeconds(Math.max(0, timeLimit - elapsed));
+                Long timeLimit = getTimeLimitForPhase(game);
+                long remaining = timerService.getRemainingSeconds(game.getLobby().getLobbyCode());
+                if (remaining == 0 && timeLimit != null) {
+                    remaining = Math.max(0, timeLimit - elapsed);
+                }
+                boardDTO.setRemainingTimeSeconds(remaining);
             }
         }
 
@@ -418,6 +428,23 @@ public class GameService {
         boardDTO.setClueHistory(clueHistory);
 
         return boardDTO;
+    }
+
+    private Long getTimeLimitForPhase(Game game) {
+        if (game.getCurrentTurn() == null || game.getCurrentTurn().getPhase() == null) {
+            return null;
+        }
+        Integer timeLimit = null;
+        if (game.getCurrentTurn().getPhase() == TurnPhase.SPYMASTER_TURN) {
+            timeLimit = game.getLobby().getSettings().getSpymasterTimeLimit();
+        }
+        if (game.getCurrentTurn().getPhase() == TurnPhase.SPY_TURN) {
+            timeLimit = game.getLobby().getSettings().getSpyTimeLimit();
+        }
+        if (timeLimit == null || timeLimit <= 0) {
+            timeLimit = game.getLobby().getSettings().getTimeLimit();
+        }
+        return timeLimit == null ? null : timeLimit.longValue();
     }
 
 
