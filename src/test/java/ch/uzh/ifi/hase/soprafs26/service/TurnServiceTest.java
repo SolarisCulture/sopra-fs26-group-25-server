@@ -31,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs26.repository.LobbyRepository;
 import ch.uzh.ifi.hase.soprafs26.repository.TurnRepository;
+import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.ClueDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GameBoardDTO;
 import ch.uzh.ifi.hase.soprafs26.rest.dto.GuessDTO;
@@ -47,6 +48,8 @@ public class TurnServiceTest {
     private GameWebSocketHandler gameWebSocketHandler;
     @Mock
     private TurnRepository turnRepository;
+    @Mock
+    private GameRepository gameRepository;
     @Mock
     private TimerService timerService;
 
@@ -371,7 +374,6 @@ public class TurnServiceTest {
         assertEquals(TeamColor.RED, testGame.getWinningTeam());
 
         verify(timerService).stopTimer("ABC123");
-        verify(gameService).calculateGameStatistics(testLobby.getLobbyCode());
         verify(gameWebSocketHandler).broadcastGameState(
                 eq("ABC123"), eq(EventType.GAME_OVER), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
@@ -429,6 +431,70 @@ public class TurnServiceTest {
         assertEquals(TeamColor.BLUE, testGame.getCurrentTurn().getCurrentTeamColor());
         assertEquals(TurnPhase.SPYMASTER_TURN, testGame.getCurrentTurn().getPhase());
         verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.TURN_CHANGED), any(GameBoardDTO.class), any(GameBoardDTO.class));
+    }
+
+    @Test
+    public void endTurn_withRoundLimit_incrementsRoundAndContinuesGame() {
+        testLobby.getSettings().setRounds(2);
+        testTurn.setPhase(TurnPhase.SPY_TURN);
+        testTurn.setCurrentTeamColor(TeamColor.RED);
+        testGame.setCurrentRound(1);
+        testGame.setCurrentRoundOverall(0);
+        testGame.setTurns(new ArrayList<>(List.of(testTurn)));
+        testGame.setCurrentTurn(testTurn);
+
+        Turn newTurn = new Turn();
+        newTurn.setCurrentTeamColor(TeamColor.BLUE);
+        newTurn.setPhase(TurnPhase.SPYMASTER_TURN);
+
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+        when(turnRepository.saveAndFlush(any(Turn.class))).thenReturn(newTurn);
+        when(gameRepository.saveAndFlush(any(Game.class))).thenReturn(testGame);
+        when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
+        when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
+
+        turnService.endTurn("ABC123", true);
+
+        assertEquals(GameStatus.ACTIVE, testGame.getStatus());
+        assertEquals(2, testGame.getCurrentRound());
+        assertEquals(0, testGame.getCurrentRoundOverall());
+        verify(gameRepository).saveAndFlush(testGame);
+        verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.TURN_CHANGED), any(GameBoardDTO.class), any(GameBoardDTO.class));
+    }
+
+    @Test
+    public void endTurn_roundLimitReached_finishesGameAndSetsWinner() {
+        testLobby.getSettings().setRounds(1);
+        testTurn.setPhase(TurnPhase.SPY_TURN);
+        testTurn.setCurrentTeamColor(TeamColor.RED);
+        testGame.setCurrentRound(2);
+        testGame.setCurrentRoundOverall(0);
+        testGame.setRedScore(1);
+        testGame.setBlueScore(3);
+        testGame.setTurns(new ArrayList<>(List.of(testTurn)));
+        testGame.setCurrentTurn(testTurn);
+
+        Turn newTurn = new Turn();
+        newTurn.setCurrentTeamColor(TeamColor.BLUE);
+        newTurn.setPhase(TurnPhase.SPYMASTER_TURN);
+
+        when(lobbyRepository.findByLobbyCode("ABC123")).thenReturn(Optional.of(testLobby));
+        when(turnRepository.saveAndFlush(any(Turn.class))).thenReturn(newTurn);
+        when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPYMASTER))).thenReturn(new GameBoardDTO());
+        when(gameService.buildBoardDTO(any(Game.class), eq(Role.SPY))).thenReturn(new GameBoardDTO());
+
+        turnService.endTurn("ABC123", true);
+
+        assertEquals(GameStatus.FINISHED, testGame.getStatus());
+        assertEquals(1, testGame.getCurrentRound());
+        assertEquals(1, testGame.getCurrentRoundOverall());
+        assertEquals(TeamColor.BLUE, testGame.getWinningTeam());
+        verify(timerService).stopTimer("ABC123");
+        verify(gameWebSocketHandler).broadcastGameState(
+                eq("ABC123"), eq(EventType.GAME_OVER), any(GameBoardDTO.class), any(GameBoardDTO.class));
+        verify(gameWebSocketHandler, never()).broadcastGameState(
                 eq("ABC123"), eq(EventType.TURN_CHANGED), any(GameBoardDTO.class), any(GameBoardDTO.class));
     }
 

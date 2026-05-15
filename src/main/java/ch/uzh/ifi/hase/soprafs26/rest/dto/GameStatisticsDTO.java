@@ -6,7 +6,7 @@ public class GameStatisticsDTO {
     private int redScore;
     private int blueScore;
     private int roundsPlayed;
-    private int totalTime;
+    private long totalTime;
     private TeamColor winningTeam;
 
     public int getRedScore() { return redScore; }
@@ -18,8 +18,8 @@ public class GameStatisticsDTO {
     public int getRoundsPlayed() { return roundsPlayed; }
     public void setRoundsPlayed(int roundsPlayed) { this.roundsPlayed = roundsPlayed; }
 
-    public int getTotalTime() { return totalTime; }
-    public void setTotalTime(int totalTime) { this.totalTime = totalTime; }
+    public long getTotalTime() { return totalTime; }
+    public void setTotalTime(long totalTime) { this.totalTime = totalTime; }
 
     public TeamColor getWinningTeam() { return winningTeam; }
     public void setWinningTeam(TeamColor winningTeam) { this.winningTeam = winningTeam; }
