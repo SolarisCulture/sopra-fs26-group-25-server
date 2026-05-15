@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Optional;
 
+import org.jspecify.annotations.NonNull;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -49,22 +50,7 @@ public class TurnService {
     public void submitClue(String lobbyCode, ClueDTO clueDTO) {
         Game game = getActiveGame(lobbyCode);
         Turn turn = getCurrentTurn(game, TurnPhase.SPYMASTER_TURN);
-
-        Clue clue = new Clue();
-        if (clueDTO.getWord() != null  && !clueDTO.getWord().isEmpty()) {
-            clue.setWord(clueDTO.getWord());
-        } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Clue word is missing");
-        }
-        if (clueDTO.getCount() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Count should be positive!");
-        } else {
-            clue.setCount(clueDTO.getCount());
-        }
-        
-        //clue.setType(GameEventType.CLUE);
-        //clue.setTimeStamp(LocalDateTime.now());
-        clue.setDescription("Clue: " + clueDTO.getWord() + " (" + clueDTO.getCount() + ")");
+        Clue clue = getClue(clueDTO);
 
         turn.setClue(clue);
 
@@ -88,6 +74,27 @@ public class TurnService {
         spyView.setClueCount(clue.getCount());
 
         gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.CLUE_GIVEN, spymasterView, spyView);
+    }
+
+    private static @NonNull Clue getClue(ClueDTO clueDTO) {
+        Clue clue = new Clue();
+        if (clueDTO.getWord() != null  && !clueDTO.getWord().isEmpty()) {
+            clue.setWord(clueDTO.getWord());
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Clue word is missing");
+        }
+        if (clueDTO.getCount() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Count should be positive or zero!");
+        }
+        if (clueDTO.getCount() == 0) {
+            clue.setCount(25);  // set as amount of words on the board
+        }
+        else {
+            clue.setCount(clueDTO.getCount());
+        }
+
+        clue.setDescription("Clue: " + clueDTO.getWord() + " (" + clueDTO.getCount() + ")");
+        return clue;
     }
 
     public void submitGuess(String lobbyCode, GuessDTO guessDTO) {
