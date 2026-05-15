@@ -226,20 +226,6 @@ public class GameService {
         return game;
     }
 
-    public void calculateGameStatistics(String lobbyCode) {
-        Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
-
-        if (lobbyOptional.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
-        }
-        Game game = lobbyOptional.get().getGame();
-        if (game == null) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No game found for this lobby");}
-        if (game.getStatus() != GameStatus.FINISHED) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Game is not finished yet!");}
-
-        game.setRoundsPlayed(game.getCurrentRound());
-        game.setTotalTime(0);               // Needs timer implementation --> Has to be implemented yet
-    }
-
     public GameStatisticsDTO getGameStatistics(String lobbyCode) {
         Optional<Lobby> lobbyOptional = lobbyRepository.findByLobbyCode(lobbyCode);
 
@@ -253,8 +239,8 @@ public class GameService {
         GameStatisticsDTO gameStatistics = new GameStatisticsDTO();
         gameStatistics.setBlueScore(game.getBlueScore());
         gameStatistics.setRedScore(game.getRedScore());
-        gameStatistics.setRoundsPlayed(game.getRoundsPlayed());
-        gameStatistics.setTotalTime(game.getTotalTime());
+        gameStatistics.setRoundsPlayed(game.getCurrentRoundOverall());
+        gameStatistics.setTotalTime(Duration.between(game.getCreatedAt(), LocalDateTime.now()).getSeconds());
         gameStatistics.setWinningTeam(game.getWinningTeam());
 
         return gameStatistics;

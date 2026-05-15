@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
+import ch.uzh.ifi.hase.soprafs26.repository.GameRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Optional;
@@ -32,18 +33,20 @@ import ch.uzh.ifi.hase.soprafs26.websocket.handler.GameWebSocketHandler;
 @Service
 @Transactional
 public class TurnService {
+    private final GameRepository gameRepository;
     private final LobbyRepository lobbyRepository;
     private final GameService gameService;
     private final GameWebSocketHandler gameWebSocketHandler;
     private final TurnRepository turnRepository;
     private final TimerService timerService;
 
-    public TurnService(LobbyRepository lobbyRepository, GameService gameService, GameWebSocketHandler gameWebSocketHandler, TurnRepository turnRepository, @Lazy TimerService timerService) {
+    public TurnService(LobbyRepository lobbyRepository, GameService gameService, GameWebSocketHandler gameWebSocketHandler, TurnRepository turnRepository, @Lazy TimerService timerService, GameRepository gameRepository) {
         this.lobbyRepository = lobbyRepository;
         this.turnRepository = turnRepository;
         this.gameService = gameService;
         this.gameWebSocketHandler = gameWebSocketHandler;
         this.timerService = timerService;
+        this.gameRepository = gameRepository;
     }
 
     public void submitClue(String lobbyCode, ClueDTO clueDTO) {
@@ -169,7 +172,6 @@ public class TurnService {
 
         if (game.getStatus() == GameStatus.FINISHED) {
             timerService.stopTimer(lobbyCode);
-            gameService.calculateGameStatistics(lobbyCode);
             GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
             GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
             gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.GAME_OVER, spymasterView, spyView);
@@ -211,7 +213,7 @@ public class TurnService {
 
         WordCard wordCard = game.getBoard().findCardByWord(guessDTO.getWord());
         if (wordCard == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "WordCard with word" + guessDTO.getWord() + " not exist!");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "WordCard with word" + guessDTO.getWord() + "does not exist!");
         }
         if (wordCard.isRevealed()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card already revealed!");
@@ -237,12 +239,14 @@ public class TurnService {
             game.setWinningTeam(penaltyTeam);
             game.setStatus(GameStatus.FINISHED);
             timerService.stopTimer(lobbyCode);
-            gameService.calculateGameStatistics(lobbyCode);
             GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
             GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
             gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.GAME_OVER, spymasterView, spyView);
             return;
         }
+
+        // Increase round counter after a back and forth
+        if(checkRounds(lobbyCode, game)){return;}
 
         turn.setClue(null);
         turn.setGuessesRemaining(0);
@@ -331,6 +335,9 @@ public class TurnService {
         game.getTurns().add(nextTurn);
         game.setCurrentTurn(nextTurn);
 
+        // Increase round counter after a back and forth
+        if(checkRounds(lobbyCode, game)){return;}
+
         restartTimerForNextPhase(lobbyCode, getSpymasterTimeLimit(game));
 
         // Save and broadcast
@@ -415,4 +422,30 @@ public class TurnService {
         return game.getBlueScore() == game.getBlueTotal();
     }
 
+    private boolean checkRounds(String lobbyCode, Game game){
+        if (findLobbyByCode(lobbyCode).getSettings().getRounds() != null && findLobbyByCode(lobbyCode).getSettings().getRounds() != 0) {
+            game.setCurrentRound(game.getCurrentRound()+1);
+            if (game.getCurrentRound() == 3) {
+                game.setCurrentRound(1);
+                game.setCurrentRoundOverall(game.getCurrentRoundOverall()+1);
+                if (game.getCurrentRoundOverall() >= findLobbyByCode(lobbyCode).getSettings().getRounds()) {
+                    game.setStatus(GameStatus.FINISHED);
+                    if (game.getBlueScore() > game.getRedScore()) {
+                        game.setWinningTeam(TeamColor.BLUE);
+                    } else if (game.getBlueScore() < game.getRedScore()) {
+                        game.setWinningTeam(TeamColor.RED);
+                    } else {
+                        game.setWinningTeam(TeamColor.UNASSIGNED);      // tie
+                    }
+                    timerService.stopTimer(lobbyCode);
+                    GameBoardDTO spymasterView = gameService.buildBoardDTO(game, Role.SPYMASTER);
+                    GameBoardDTO spyView = gameService.buildBoardDTO(game, Role.SPY);
+                    gameWebSocketHandler.broadcastGameState(lobbyCode, EventType.GAME_OVER, spymasterView, spyView);
+                    return true;
+                }
+            }
+        }
+        gameRepository.saveAndFlush(game);
+        return false;
+    }
 }

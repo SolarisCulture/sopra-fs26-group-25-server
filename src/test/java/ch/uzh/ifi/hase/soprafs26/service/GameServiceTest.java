@@ -1,5 +1,6 @@
 package ch.uzh.ifi.hase.soprafs26.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import ch.uzh.ifi.hase.soprafs26.constant.CardType;
@@ -280,27 +282,17 @@ class GameServiceTest {
     public void calculateGameStatistics_validFinishedGame_setsStatisticsCorrectly() {
         Game game = new Game();
         game.setStatus(GameStatus.FINISHED);
-        game.setCurrentRound(5);
+        game.setCurrentRoundOverall(5);
+        ReflectionTestUtils.setField(game, "createdAt", LocalDateTime.now());
 
         testLobby.setGame(game);
 
         when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
 
-        gameService.calculateGameStatistics(testLobby.getLobbyCode());
+        GameStatisticsDTO result = gameService.getGameStatistics(testLobby.getLobbyCode());
 
-        assertEquals(5, game.getRoundsPlayed());
-        assertEquals(0, game.getTotalTime());
-    }
-
-    @Test
-    public void calculateGameStatistics_gameNotFinished_throwsException() {
-        Game game = new Game();
-        game.setStatus(GameStatus.ACTIVE);
-        testLobby.setGame(game);
-
-        when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
-
-        assertThrows(ResponseStatusException.class, () -> {gameService.calculateGameStatistics(testLobby.getLobbyCode());});
+        assertEquals(5, result.getRoundsPlayed());
+        assertTrue(result.getTotalTime() >= 0);
     }
 
     @Test
@@ -309,9 +301,9 @@ class GameServiceTest {
         game.setStatus(GameStatus.FINISHED);
         game.setBlueScore(5);
         game.setRedScore(9);
-        game.setRoundsPlayed(7);
-        game.setTotalTime(100);
+        game.setCurrentRoundOverall(7);
         game.setWinningTeam(TeamColor.RED);
+        ReflectionTestUtils.setField(game, "createdAt", LocalDateTime.now().minusSeconds(100));
 
         testLobby.setGame(game);
 
@@ -322,7 +314,7 @@ class GameServiceTest {
         assertEquals(5, result.getBlueScore());
         assertEquals(9, result.getRedScore());
         assertEquals(7, result.getRoundsPlayed());
-        assertEquals(100, result.getTotalTime());
+        assertTrue(result.getTotalTime() >= 100);
         assertEquals(TeamColor.RED, result.getWinningTeam());
     }
 

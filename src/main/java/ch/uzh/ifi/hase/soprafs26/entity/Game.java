@@ -55,6 +55,7 @@ public class Game {
     //private TeamColor team;
 
     private int currentRound;
+    private int currentRoundOverall;
     private int maxRounds;
     private int roundsPlayed;
     private int totalTime;
@@ -74,6 +75,7 @@ public class Game {
         this.createdAt = LocalDateTime.now();
         this.status = GameStatus.ACTIVE;
         this.currentRound = 1;
+        this.currentRoundOverall = 0;
         this.redScore = 0;
         this.blueScore = 0;
     }
@@ -104,6 +106,9 @@ public class Game {
 
     public int getCurrentRound() { return currentRound; }
     public void setCurrentRound(int currentRound) { this.currentRound = currentRound; }
+
+    public int getCurrentRoundOverall() { return currentRoundOverall; }
+    public void setCurrentRoundOverall(int currentRoundOverall) { this.currentRoundOverall = currentRoundOverall; }
 
     public int getMaxRounds() { return maxRounds; }
     public void setMaxRounds(int maxRounds) { this.maxRounds = maxRounds; }
