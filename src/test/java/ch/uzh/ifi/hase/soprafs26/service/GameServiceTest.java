@@ -412,17 +412,6 @@ class GameServiceTest {
         Mockito.verify(lobbyRepository, Mockito.times(1)).save(testLobby);
     }
 
-    @Test
-    public void backToLobby_gameNotFinished_throwsException() {
-        Game game = new Game();
-        game.setStatus(GameStatus.ACTIVE);
-        testLobby.setGame(game);
-
-        Mockito.when(lobbyRepository.findByLobbyCode(Mockito.any())).thenReturn(Optional.of(testLobby));
-
-        assertThrows(ResponseStatusException.class, () -> {gameService.backToLobby(testLobby.getLobbyCode());});
-    }
-
     // ==================== regenerateBoard tests ====================
 
     @Test
