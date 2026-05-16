@@ -12,13 +12,15 @@ The backend handles lobby management, game state (board generation, turn order, 
 
 ## Technologies Used
 
-- **Java 17** - Core language
-- **Spring Boot 3.x** - Application framework
-- **Spring Data JPA** - Database persistence
-- **Spring WebSocket** (with STOMP) - Real-time communication
-- **H2** - Database (in-memory)
-- **Gradle** - Build tool
-- **JUnit 5, Mockito, Spring Boot Test** - Testing
+- **[Java 17](https://openjdk.org/projects/jdk/17/)** - Core language
+- **[Spring Boot 3.x](https://spring.io/projects/spring-boot)** - Application framework
+- **[Spring Data JPA](https://spring.io/projects/spring-data-jpa)** - Database persistence
+- **[Spring WebSocket](https://spring.io/guides/gs/messaging-stomp-websocket/)** (with STOMP) - Real-time communication
+- **[Spring Security](https://spring.io/projects/spring-security)** - CSRF disabled for stateless API + WebSockets
+- **[H2 Database](https://www.h2database.com/html/main.html)** - Database (in-memory)
+- **[Gradle](https://gradle.org/)** - Build tool
+- **[JUnit 5](https://junit.org/junit5/)** / **[Mockito](https://site.mockito.org/)** / **[Spring Boot Test](https://docs.spring.io/spring-boot/docs/current/reference/html/features.html#features.testing)** - Testing
+- **[Docker](https://www.docker.com/)** - Container platform for building, shipping and running isolated, reproducible environments
 
 ---
 
@@ -84,7 +86,22 @@ New releases are automatically built and deployed when changes are pushed to the
 > **Note:** If you encounter missing dependencies after pulling new changes or switching branches, run `./gradlew clean build` to force a re-download.
 
 ## Roadmap
+- Separate chat channels for different teams/spymasters
+- Persistent custom word list storage
+- Difficulty levels of chosen words
 
-## Authors and acknowledgement
+## Authors
+| Name          | Personal page                                                                                                                                  |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Aldin Haric  | https://github.com/Kirusou |
+| Philipp Schneeberger | https://github.com/PhlipperCH |
+| Phuoc Tuong Timmy Ho | https://github.com/Timmy-Ho |
+| Polina Karanxha | https://github.com/SolarisCulture |
+| Sereina Liana Decurtins | https://github.com/serilia03 |
+
+## Acknowledgement
+- This repository code derives the framework from the kind **UZH HASEL team** provided [SoPra FS26 - Server Template](https://github.com/HASEL-UZH/sopra-fs26-template-server).
+- Many thanks to **Luke Benjamin Fohringer** who helped us as our TA during this project.
 
 ## License
+We publish the code under the terms of the [Apache 2.0 License](https://github.com/T0hsakaR1n126/sopra-fs25-group-10-client/blob/main/LICENSE) that allows distribution, modification, and commercial use. This software, however, comes without any warranty or liability.
